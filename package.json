@@ -1,0 +1,62 @@
+{
+  "name": "dsh-codsh-theme",
+  "version": "0.3.17",
+  "description": "Codex-inspired full interface skin for DeepSeek Harness, with the DeepSeek welcome mark",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./dist/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "remote-contract.js",
+    "dist",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "author": {
+    "name": "炽阳001",
+    "url": "https://github.com/Chiyang001?tab=repositories"
+  },
+  "license": "MIT",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "theme",
+    "codex"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-theme",
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-api-workspace-controller"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Chiyang001/dsh-codsh-theme.git"
+  },
+  "homepage": "https://github.com/Chiyang001/dsh-codsh-theme#readme",
+  "bugs": {
+    "url": "https://github.com/Chiyang001/dsh-codsh-theme/issues"
+  }
+}
