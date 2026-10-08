@@ -28,6 +28,66 @@ function setup() {
   return {dom,document:dom.window.document,dispose,calls,context,get tokenDispose(){return tokenDispose;},tokens,sessions,workspaces,opened,sessionListeners,workspaceListeners};
 }
 const settle = () => new Promise(resolve=>setTimeout(resolve,0));
+
+test('conversation tab content animates in both directions and cancels on disposal',async()=>{
+  const env=setup(),d=env.document,animations=[];
+  const root=d.createElement('div');root.className='conversation_root';root.innerHTML='<div data-conversation-tabs><button class="conversation_tab conversation_tabActive" aria-selected="true">对话</button><button class="conversation_tab" aria-selected="false">轨迹</button></div><div class="conversation_viewArea"></div>';
+  root.lastElementChild.animate=(frames,options)=>{const state={frames,options,cancelled:false,cancel(){this.cancelled=true;}};animations.push(state);return state;};d.body.append(root);await settle();
+  const tabs=root.querySelector('[data-conversation-tabs]');
+  assert.equal(d.querySelector('.codsh-view-toggle'),null);assert.equal(tabs.hasAttribute('data-codsh-tabs-collapsed'),false);
+  const buttons=tabs.querySelectorAll('button');
+  const select=async index=>{buttons.forEach((button,i)=>{button.setAttribute('aria-selected',String(i===index));button.classList.toggle('conversation_tabActive',i===index);});await settle();};
+  await select(1);assert.equal(animations.length,1);assert.equal(animations[0].frames[0].transform,'translateX(6px)');
+  await select(0);assert.equal(animations.length,2);assert.equal(animations[0].cancelled,true);assert.equal(animations[1].frames[0].transform,'translateX(-6px)');
+  env.dispose();assert.equal(animations[1].cancelled,true);env.dom.window.close();
+});
+
+test('collapsed navigation previews close after leaving and remain open on pointer return',async()=>{
+  const env=setup(),d=env.document,root=d.querySelector('[data-codsh-sidebar]');
+  const frame=d.createElement('div');frame.className='layout_frame';frame.setAttribute('data-sidebar-collapsed','true');root.before(frame);frame.append(root);
+  root.querySelector('[data-codsh-navigation="projects"]').click();
+  assert.ok(root.hasAttribute('data-codsh-temporary-sidebar'));assert.ok(frame.hasAttribute('data-sidebar-collapsed'));
+  d.body.dispatchEvent(new env.dom.window.Event('pointermove',{bubbles:true}));
+  root.dispatchEvent(new env.dom.window.Event('pointermove',{bubbles:true}));
+  await new Promise(resolve=>setTimeout(resolve,180));assert.ok(root.hasAttribute('data-codsh-temporary-sidebar'));
+  d.body.dispatchEvent(new env.dom.window.Event('pointermove',{bubbles:true}));
+  await new Promise(resolve=>setTimeout(resolve,180));assert.equal(root.hasAttribute('data-codsh-temporary-sidebar'),false);
+  root.querySelector('[data-codsh-navigation="recent"]').click();assert.ok(root.hasAttribute('data-codsh-temporary-sidebar'));
+  d.dispatchEvent(new env.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert.equal(root.hasAttribute('data-codsh-temporary-sidebar'),false);
+  env.dispose();env.dom.window.close();
+});
+
+test('archive display toggles the native filter and recent rows without opening view options',async()=>{
+  const env=setup(),d=env.document,filters=[];
+  env.context.uiWorkspace.view={setArchivedFilter:filter=>filters.push(filter)};
+  const header=d.querySelector('.workspace_sectionHeader');
+  const native=d.createElement('button');native.setAttribute('aria-label','视图选项');header.append(native);
+  env.sessions.ids.push('active','archived');env.sessions.byId.active={id:'active',title:'当前',updatedAt:2};env.sessions.byId.archived={id:'archived',title:'归档',updatedAt:1};
+  env.workspaces.archivedSessionIds=['archived'];for(const listener of env.workspaceListeners)listener();await settle();
+  const toggle=d.querySelector('.codsh-archive-toggle');assert.equal(toggle.getAttribute('aria-pressed'),'false');
+  assert.equal(env.dom.window.getComputedStyle(native).display,'none');assert.equal(d.querySelector('.codsh-session[data-session-id="archived"]'),null);
+  toggle.click();await settle();assert.equal(filters.at(-1),'show');assert.equal(toggle.getAttribute('aria-pressed'),'true');assert.ok(d.querySelector('.codsh-session[data-session-id="archived"]'));
+  toggle.click();await settle();assert.equal(filters.at(-1),'default');assert.equal(d.querySelector('.codsh-session[data-session-id="archived"]'),null);
+  env.dispose();assert.equal(d.querySelector('.codsh-archive-toggle'),null);assert.equal(native.hasAttribute('data-codsh-native-view-options'),false);env.dom.window.close();
+});
+
+test('native composer statistics wrap without losing figures, interactions or remounted nodes',async()=>{
+  const env=setup(),d=env.document;
+  const dock=d.createElement('div');dock.className='input_dock extra';
+  dock.innerHTML='<div data-composer-stats><span class="stats_anchor extra"><button class="stats_pill"><span class="stats_label extra">7.7K tok · 缓存命中 97%</span></button></span><span>1 轮 1 步 · 200 tok/s</span></div><button data-context-meter>1%</button>';
+  d.querySelector('[data-composer-seat]').append(dock);let clicks=0;dock.querySelector('.stats_pill').onclick=()=>clicks++;
+  await settle();
+  const computed=node=>env.dom.window.getComputedStyle(node);
+  assert.equal(computed(dock).flexWrap,'wrap');
+  assert.equal(computed(dock.querySelector('[data-composer-stats]')).flexWrap,'wrap');
+  assert.equal(computed(dock.querySelector('.stats_label')).overflow,'visible');
+  assert.equal(computed(dock.querySelector('.stats_pill')).whiteSpace,'normal');
+  dock.querySelector('.stats_pill').click();assert.equal(clicks,1);
+  const replacement=dock.firstElementChild.cloneNode(true);dock.firstElementChild.replaceWith(replacement);await settle();
+  assert.equal(computed(replacement).flexWrap,'wrap');assert.match(replacement.textContent,/缓存命中 97%/);
+  assert.equal(dock.querySelector('[data-context-meter]').textContent,'1%');
+  env.dispose();assert.equal(computed(replacement).flexWrap,'');assert.match(replacement.textContent,/7.7K tok/);env.dom.window.close();
+});
 test('header search filters projects and sessions, opens results and restores focus on Escape',async()=>{
   const env=setup(),d=env.document;let projectOpened;
   env.context.uiWorkspace.openWorkspace=async id=>{projectOpened=id;};
@@ -224,7 +284,8 @@ test('section folding blocks hidden focus and restores native project interactio
   assert.ok(d.querySelector('.codsh-section-collapsed'));assert.equal(d.querySelector('.codsh-recent-inner').inert,true);
   d.querySelector('button[aria-label="项目"]').click();assert.equal(projects.getAttribute('aria-expanded'),'true');
   let added=0;d.querySelector('[aria-label="添加工作区"]').addEventListener('click',()=>added++);
-  d.querySelector('button[aria-label="添加项目"]').click();assert.equal(added,1);
+  assert.equal(d.querySelector('button[aria-label="添加项目"]'),null);
+  d.querySelector('[aria-label="添加工作区"]').click();assert.equal(added,1);
   projects.click();env.dispose();assert.equal(list.inert,false);
   assert.equal(d.querySelector('.codsh-projects-toggle'),null);assert.equal(d.querySelector('.codsh-rail-tools'),null);
   env.dom.window.close();
@@ -266,14 +327,16 @@ test('sidebar close keeps a clipped snapshot until the grid transition finishes;
   toggle.addEventListener('click',()=>frame.setAttribute('data-sidebar-collapsed','true'));
   toggle.click();await settle();
   const exit=d.querySelector('.codsh-sidebar-exit');assert.ok(exit);assert.equal(exit.inert,true);assert.equal(exit.getAttribute('aria-hidden'),'true');
-  assert.equal(exit.querySelectorAll('.codsh-rail-tools').length,1);assert.equal(animations[0].options.duration,240);
-  assert.equal(animations[0].frames[1].clipPath,'inset(0 100% 0 0)');
+  assert.equal(exit.querySelectorAll('.codsh-rail-tools,.side_toggle,.abc_panelList,.side_footArea').length,0);assert.equal(animations[0].options.duration,240);
+  assert.ok(root.querySelector('.codsh-rail-tools'));assert.ok(root.querySelector('.side_toggle'));
+  assert.equal(animations[0].frames[0].clipPath,'inset(0 0 0 52px)');
+  assert.equal(animations[0].frames[1].clipPath,'inset(0 calc(100% - 52px) 0 52px)');
   animations[0].animation.onfinish();assert.equal(d.querySelector('.codsh-sidebar-exit'),null);
   d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="settings_options"><div data-slot="settings.section"><section class="models_section extra"></section></div><div><section class="inventory_section"></section></div><section class="presets_section"></section><section class="general_section"><div data-slot="settings.general.item"></div></section></div></div>');
   await settle();for(const section of d.querySelectorAll('.settings_options section')){const computed=env.dom.window.getComputedStyle(section);assert.equal(computed.width,'100%');assert.equal(computed.maxWidth,'none');}
   env.dispose();env.dom.window.close();
 });
-test('reasoning panel survives native close and bridges the next selection; Ultra alone has particles',async()=>{
+test('reasoning panel survives native close and bridges the next selection; flowing dots stay inside the fill',async()=>{
   const env=setup(),d=env.document;let selected=1,commits=0;
   d.body.insertAdjacentHTML('beforeend','<div><button id="persistent-model" aria-haspopup="menu" aria-expanded="false"><svg class="model_triggerIcon"></svg><span class="model_triggerLabel">DeepSeek</span><span class="model_triggerEffort">Medium</span></button></div>');
   const trigger=d.getElementById('persistent-model'),labels=['Low','Medium','High','Ultra'];
@@ -320,15 +383,15 @@ test('reasoning slider uses available native levels and commits once without inv
   const slider=d.querySelector('input[type="range"]');assert.ok(slider);assert.equal(slider.max,'2');
   assert.equal(slider.value,'1');assert.equal(slider.getAttribute('aria-valuetext'),'Medium');
   slider.value='2';slider.dispatchEvent(new env.dom.window.Event('input',{bubbles:true}));assert.equal(commits,0);
-  assert.equal(d.querySelector('.codsh-effort-title').textContent,'High');
+  assert.equal(d.querySelector('.codsh-effort-title').textContent,'高');
   slider.dispatchEvent(new env.dom.window.Event('change',{bubbles:true}));assert.equal(commits,1);assert.equal(selection,'High');
   const options=d.querySelectorAll('button[role="menuitemradio"]');options.forEach(option=>{option.disabled=true;});trigger.focus();await settle();
-  assert.equal(slider.value,'2');assert.equal(d.querySelector('.codsh-effort-title').textContent,'High');
+  assert.equal(slider.value,'2');assert.equal(d.querySelector('.codsh-effort-title').textContent,'高');
   assert.equal(slider.disabled,true);slider.dispatchEvent(new env.dom.window.Event('change',{bubbles:true}));assert.equal(commits,1);
   trigger.disabled=true;await settle();
   const oldMenu=d.getElementById('native-menu');oldMenu.remove();trigger.disabled=false;trigger.setAttribute('aria-expanded','false');await settle();
-  assert.equal(slider.value,'2');assert.equal(d.querySelector('.codsh-effort-title').textContent,'High');
-  assert.equal(d.querySelector('.codsh-reasoning-trigger span').textContent,'High');
+  assert.equal(slider.value,'2');assert.equal(d.querySelector('.codsh-effort-title').textContent,'高');
+  assert.equal(d.querySelector('.codsh-reasoning-trigger span').textContent,'高');
   d.body.append(oldMenu);await settle();assert.equal(slider.value,'2');
   env.dispose();assert.equal(d.querySelector('.codsh-effort-control'),null);assert.equal(d.querySelector('.codsh-reasoning-trigger'),null);
   assert.equal(d.querySelectorAll('button[role="menuitemradio"]').length,3);env.dom.window.close();
@@ -343,8 +406,8 @@ test('one more button remains, menu items have icons and quick pins toggle witho
   row.querySelector('.codsh-row-menu').click();for(const button of d.querySelectorAll('.codsh-actions-menu button'))assert.ok(button.querySelector('svg'));
   env.dispose();assert.equal(native.hasAttribute('data-codsh-native-more'),false);assert.equal(d.querySelector('.codsh-row-pin'),null);env.dom.window.close();
 });
-test('model trigger opens only the catalog; Max is purple without Ultra particles or a focus outline',async()=>{
-  const env=setup(),d=env.document;
+test('model trigger opens only the catalog; Max is purple with flowing dots and no focus outline',async()=>{
+  const env=setup(),d=env.document;const frames=[];env.dom.window.requestAnimationFrame=fn=>frames.push(fn);
   d.body.insertAdjacentHTML('beforeend','<div><button id="catalog-trigger" aria-haspopup="menu"><svg class="model_triggerIcon"></svg><span class="model_triggerLabel">DeepSeek</span><span class="model_triggerEffort">Max</span></button></div>');
   const trigger=d.getElementById('catalog-trigger');let drilled=0;
   trigger.addEventListener('click',()=>{
@@ -356,7 +419,15 @@ test('model trigger opens only the catalog; Max is purple without Ultra particle
   assert.equal(d.querySelector('.codsh-effort-control'),null);
   const menu=d.getElementById('catalog-menu');menu.innerHTML='<button role="menuitemradio" aria-checked="false">Low</button><button role="menuitemradio" aria-checked="true">Max</button>';
   await settle();const panel=d.querySelector('.codsh-effort-control');assert.ok(panel.classList.contains('codsh-effort-max'));assert.equal(panel.classList.contains('codsh-effort-ultra'),false);
-  assert.equal(env.dom.window.getComputedStyle(panel.querySelector('.codsh-effort-sparks')).display,'none');
+  assert.equal(env.dom.window.getComputedStyle(panel.querySelector('.codsh-effort-sparks')).display,'block');
+  const fill=panel.querySelector('.codsh-effort-fill'),thumb=panel.querySelector('.codsh-effort-thumb');
+  fill.getBoundingClientRect=()=>({left:100,height:24});let thumbLeft=300;thumb.getBoundingClientRect=()=>({left:thumbLeft});
+  const dots=panel.querySelectorAll('.codsh-effort-sparks i');assert.equal(dots.length,28);
+  frames.shift()(1000);assert.equal(dots[0].style.transform,'translate(198px,-50%)');assert.equal(dots[0].style.opacity,'0.9');
+  assert.ok(new Set(Array.from(dots,dot=>dot.style.top)).size>12);
+  frames.shift()(1525);assert.equal(dots[0].style.transform,'translate(148.5px,-50%)');
+  thumbLeft=400;frames.shift()(2050);assert.equal(dots[0].style.transform,'translate(298px,-50%)');
+
   assert.match(d.querySelector('[data-codsh-style]').textContent,/\.codsh-effort-track input:focus-visible \{outline:none/);
   env.dispose();env.dom.window.close();
 });
@@ -375,4 +446,26 @@ test('session archive lives in the menu and native duplicate pin/archive control
   const action=Array.from(d.querySelectorAll('.codsh-actions-menu button')).find(button=>button.textContent==='归档会话');assert.ok(action.querySelector('svg'));action.click();await settle();
   assert.deepEqual(JSON.parse(JSON.stringify(archived)),{id:'s',options:{stopActivity:true}});
   env.dispose();for(const button of row.querySelectorAll('.rows_rowActions button'))assert.equal(button.hasAttribute('data-codsh-native-more'),false);env.dom.window.close();
+});
+test('native plugin selection clears the upper rail and upper navigation returns to conversation',async()=>{
+  const env=setup(),d=env.document;const root=d.querySelector('[data-codsh-sidebar]');
+  root.insertAdjacentHTML('beforeend','<nav class="sidebar_panelList"><button class="sidebar_panelRow" aria-label="插件">Plugins</button></nav>');
+  const panel=root.querySelector('.sidebar_panelRow');let revealed=0;
+  env.context.inject=(keys,fn)=>fn({remote:env.context.remote,layout:{selectPanel(id){assert.equal(id,null);revealed++;panel.removeAttribute('aria-current');}}});
+  await settle();root.querySelector('[data-codsh-navigation="projects"]').click();await settle();
+  assert.equal(root.querySelector('[data-codsh-navigation="projects"]').getAttribute('aria-pressed'),'true');
+  panel.setAttribute('aria-current','page');await settle();
+  for(const button of root.querySelectorAll('[data-codsh-navigation]'))assert.equal(button.getAttribute('aria-pressed'),'false');
+  root.querySelector('[data-codsh-navigation="recent"]').click();await settle();assert.equal(revealed,2);assert.equal(panel.hasAttribute('aria-current'),false);assert.equal(root.querySelector('[data-codsh-navigation="recent"]').getAttribute('aria-pressed'),'true');
+  assert.equal(root.querySelector('.codsh-home path').getAttribute('fill'),'none');env.dispose();env.dom.window.close();
+});
+test('conversation tabs align to padded title text rather than its outer container',async()=>{
+  const env=setup(),d=env.document;
+  const root=d.createElement('div');root.className='conversation_root';root.innerHTML='<div class="conversation_titleRow"><nav class="conversation_crumbs"><span class="conversation_crumb conversation_crumbCurrent" style="padding:4px 8px">Title</span></nav></div><div data-conversation-tabs><button aria-selected="true">对话</button><button aria-selected="false">轨迹</button></div>';
+  const title=root.querySelector('.conversation_crumb'),tabs=root.querySelector('[data-conversation-tabs]');
+  title.getBoundingClientRect=()=>({left:20,width:120});
+  tabs.getBoundingClientRect=()=>({left:20+(parseFloat(tabs.style.marginLeft)||0),width:104});
+  d.body.append(root);await settle();
+  assert.equal(tabs.style.marginLeft,'8px');assert.equal(tabs.getBoundingClientRect().left,28);
+  env.dispose();assert.equal(tabs.hasAttribute('style'),false);env.dom.window.close();
 });
