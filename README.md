@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://github.com/Chiyang001"><img src="./developer.png" width="120" height="120" alt="开发者 炽阳001"></a>
+  <a href="https://github.com/Chiyang001"><img src="./assets/developer-rounded.svg" width="120" height="120" alt="开发者 炽阳001"></a>
   <img src="./assets/divider.svg" width="40" height="120" alt="竖线分隔">
   <img src="./logo.png" width="120" height="120" alt="Codsh 插件标志">
 </p>
