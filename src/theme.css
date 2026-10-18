@@ -279,7 +279,7 @@ html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is(
 html[data-codsh-theme] [data-shortcut-modal="settings"] .codsh-settings-search {box-sizing:border-box;width:100%;min-width:0;height:38px;padding:8px 14px 8px 36px;border:0!important;border-radius:999px!important;background-color:var(--codsh-hover);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23929292' stroke-width='1.7' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m16 16 5 5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:12px center;background-size:16px 16px;color:var(--codsh-text);font:13px/20px var(--dsw-font-family);}
 .codsh-settings-search::placeholder {color:var(--codsh-muted);opacity:1;}
 .codsh-settings-back {margin-top:auto;width:100%;padding:10px 12px;border:0;border-radius:9px;background:transparent;color:var(--codsh-text);font:14px/20px var(--dsw-font-family);text-align:left;cursor:pointer;}
-.codsh-settings-back:hover {background:var(--codsh-hover);}
+.codsh-settings-back:enabled:hover {background:var(--codsh-hover);}
 [data-codsh-settings-filtered] {display:none!important;}
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_section"]:has([data-slot="settings.general.item"]) {box-sizing:border-box;width:100%;margin:0 auto;padding:4px 16px;background:var(--codsh-tone-242424);border:1px solid var(--codsh-tone-323232);border-radius:16px;}
 /* Chat surfaces and native review/navigation chrome. */
@@ -513,6 +513,14 @@ html[data-codsh-theme] [data-shortcut-modal="settings"] :is([class$="_descriptio
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_balanceCard"] [class$="_row"]>span:first-child,
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] button,
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] button :is(span,label,strong) {font-weight:600!important;}
+/* Cover headings supplied by the model catalog and plugin settings pages. */
+html[data-codsh-theme] [data-shortcut-modal="settings"] :is([class$="_pageTitle"],[class$="_guideTitle"],[class$="_modelCatalogTitle"],[class$="_providerName"],[class$="_customizedSummary"],[class$="_modelFieldLabel"]) {font-weight:600!important;}
+/* Descriptions inside clickable cards keep the same weight as other help text. */
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] button :is([class$="_description"],[class$="_cardDescription"],[class$="_cardDesc"],[class$="_itemDesc"],[class$="_hint"],[class$="_helpText"]) {font-weight:400!important;}
+/* Standalone settings fields use one border for focus; wrapped fields above
+   keep their transparent inner input and put focus on the wrapper instead. */
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),textarea):focus {outline:none!important;box-shadow:none!important;border-color:var(--codsh-accent);}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is(input,textarea)[aria-invalid="true"] {border-color:var(--dsw-alias-state-error-primary)!important;}
 /* Unified model/effort pill and compact two-level picker. */
 :has(>[data-codsh-model-trigger][data-codsh-split-model]) {position:relative;}
 /* Keep the native floating-panel anchor measurable over the visible pill. */

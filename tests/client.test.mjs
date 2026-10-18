@@ -90,13 +90,16 @@ test('combined picker opens effort first without extra icons and routes model-na
 
 test('settings typography covers account, plugin and preset cards while preserving code fonts',async()=>{
   const env=setup(),d=env.document;
-  d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="_wrap_fixture_1"><input class="_input_fixture_25" placeholder="默认"></div><span class="account_amount">¥100</span><span class="general_title">网页链接默认打开方式</span><div class="shortcuts_settingTitle extra">快捷键</div><p class="shortcuts_settingDescription">查看和编辑当前可用的快捷键和输入操作</p><span class="plugin_cardTitle extra">工具</span><span class="preset_cardName">标准模式</span><p class="preset_cardDesc">说明</p><code><span id="code-font">const x=1</span></code></div>');
+  d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="_wrap_fixture_1"><input class="_input_fixture_25" placeholder="默认"></div><section class="settings_options"><span class="models_modelCatalogTitle">模型目录</span><span class="models_providerName">提供方</span><button id="settings-action"><span>应用</span><span class="card_cardDesc">说明文字</span></button><input id="standalone-field" type="text"></section><span class="account_amount">¥100</span><span class="general_title">网页链接默认打开方式</span><div class="shortcuts_settingTitle extra">快捷键</div><p class="shortcuts_settingDescription">查看和编辑当前可用的快捷键和输入操作</p><span class="plugin_cardTitle extra">工具</span><span class="preset_cardName">标准模式</span><p class="preset_cardDesc">说明</p><code><span id="code-font">const x=1</span></code></div>');
   await settle();
-  for(const node of d.querySelectorAll('.account_amount,.general_title,.shortcuts_settingTitle,.plugin_cardTitle,.preset_cardName')){
-    const style=env.dom.window.getComputedStyle(node);assert.equal(style.fontWeight,'600');assert.equal(style.fontFamily,'var(--codsh-ui-font)');assert.equal(style.color,'var(--codsh-title)');
+  for(const node of d.querySelectorAll('.account_amount,.general_title,.shortcuts_settingTitle,.plugin_cardTitle,.preset_cardName,.models_modelCatalogTitle,.models_providerName,#settings-action>span:first-child')){
+    const style=env.dom.window.getComputedStyle(node);assert.equal(style.fontWeight,'600');assert.equal(style.fontFamily,'var(--codsh-ui-font)');if(!node.matches('.models_modelCatalogTitle,.models_providerName,#settings-action>span'))assert.equal(style.color,'var(--codsh-title)');
   }
   assert.equal(env.dom.window.getComputedStyle(d.querySelector('.preset_cardDesc')).fontWeight,'400');
   assert.equal(env.dom.window.getComputedStyle(d.querySelector('.shortcuts_settingDescription')).fontWeight,'400');
+  assert.equal(env.dom.window.getComputedStyle(d.querySelector('#settings-action .card_cardDesc')).fontWeight,'400');
+  d.querySelector('#standalone-field').focus();
+  assert.equal(env.dom.window.getComputedStyle(d.querySelector('#standalone-field')).outline,'none');
   const fieldStyle=env.dom.window.getComputedStyle(d.querySelector('._input_fixture_25'));
   assert.equal(fieldStyle.backgroundColor,'rgba(0, 0, 0, 0)');
   assert.equal(fieldStyle.borderRadius,'0');
