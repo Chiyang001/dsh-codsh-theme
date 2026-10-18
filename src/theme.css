@@ -267,8 +267,8 @@ html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] {box
 /* Center every settings tab, including sections inside extension slot hosts. */
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_section"],[class*="_section "]) {box-sizing:border-box;width:100%;min-width:0;max-width:800px!important;margin-inline:auto;}
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_row"],[data-slot="settings.general.item"]) {box-sizing:border-box;min-height:48px;height:auto;padding-block:10px;gap:16px;font-size:13px;line-height:20px;}
-html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_title"],[class$="_rowName"],[class$="_name"],[class$="_editorTitle"]) {font-size:13px;line-height:20px;font-weight:600;}
-html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_description"],[class$="_intro"]) {margin-top:2px;font-size:12px;line-height:18px;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_title"],[class$="_settingTitle"],[class$="_rowName"],[class$="_name"],[class$="_editorTitle"]) {font-size:13px;line-height:20px;font-weight:600;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_description"],[class$="_settingDescription"],[class$="_intro"]) {margin-top:2px;font-size:12px;line-height:18px;}
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_rowCard"],[class$="_setupCard"],[class$="_balanceCard"]) {padding:10px 14px;gap:8px;border-radius:14px;}
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is(button:not([role="switch"]),select,input:not([type="checkbox"]):not([type="radio"]):not([type="range"])) {font-size:12px;line-height:18px;}
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_addButton"],[class$="_secondaryButton"],[class$="_linkButton"],[class$="_dangerButton"],[class$="_selectTrigger"]) {min-height:28px;height:auto;padding:5px 10px;border-radius:8px;}
@@ -489,7 +489,7 @@ html[data-codsh-theme] [data-codsh-model-menu] :is([class$="_optionLabelText"],[
 html[data-codsh-theme] [data-shortcut-modal="settings"] :is([class$="_navLabel"],.codsh-appearance h3,.codsh-appearance-mode),
 html[data-codsh-theme] [data-codsh-sidebar] :is([class$="_projectTitle"],[class$="_workspaceTitle"],[class$="_sessionRow"] [class$="_title"]),
 html[data-codsh-theme] .codsh-session span {font-weight:600;}
-html[data-codsh-theme] :is([class$="_description"],[class$="_intro"],[class$="_hint"],[class$="_helpText"]) {font-family:var(--codsh-ui-font);font-weight:400;}
+html[data-codsh-theme] :is([class$="_description"],[class$="_settingDescription"],[class$="_intro"],[class$="_hint"],[class$="_helpText"]) {font-family:var(--codsh-ui-font);font-weight:400;}
 /* Keep title contrast independent of the ordinary body-copy palette. */
 html[data-codsh-theme] body {--codsh-title:#f2f2f2;--codsh-description:#a3a3a3;}
 html[data-codsh-theme] body:not([data-ds-dark-theme]) {--codsh-title:#202124;--codsh-description:#62656c;}
@@ -499,12 +499,12 @@ html[data-codsh-theme] [data-codsh-model-trigger] [class$="_triggerLabel"],
 html[data-codsh-theme] [data-codsh-model-menu] :is([class$="_optionLabelText"],[class$="_itemLabel"]),
 html[data-codsh-theme] [data-codsh-sidebar] :is([class$="_projectTitle"],[class$="_workspaceTitle"],[class$="_sessionRow"] [class$="_title"]),
 html[data-codsh-theme] .codsh-session span {color:var(--codsh-title);}
-html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_description"],[class$="_intro"],[class$="_hint"],[class$="_helpText"]) {color:var(--codsh-description);}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_description"],[class$="_settingDescription"],[class$="_intro"],[class$="_hint"],[class$="_helpText"]) {color:var(--codsh-description);}
 /* Native pages set fonts on their own text nodes; unify those nodes directly.
    Exclude code, terminal output, editor content and icon glyphs. */
 html[data-codsh-theme] body :is(div,span,p,a,label,button,input,select,textarea,summary,h1,h2,h3,h4,h5,h6,li,dt,dd,th,td):not(:is(pre,code,kbd,samp,[class*="monaco"],[class*="xterm"],[data-terminal],[class$="_cardId"],[class$="_cardIdentity"],[class$="_entryValue"],[class$="_viewerCode"],[class$="_candidateId"],[class$="_modelReasoningValueInput"],[class$="_icon"],[class$="_glyph"])):not(:is(pre,code,kbd,samp,[class*="monaco"],[class*="xterm"],[data-terminal],[class$="_viewerCode"]) *) {font-family:var(--codsh-ui-font)!important;}
-html[data-codsh-theme] [data-shortcut-modal="settings"] :is([class$="_title"],[class$="_cardTitle"],[class$="_cardName"],[class$="_rowName"],[class$="_name"],[class$="_amount"],[class$="_groupTitle"],[class$="_groupHead"],[class$="_presetSettingsTitle"],[class$="_heading"]) {font-weight:600!important;color:var(--codsh-title)!important;}
-html[data-codsh-theme] [data-shortcut-modal="settings"] :is([class$="_description"],[class$="_cardDescription"],[class$="_cardDesc"],[class$="_intro"],[class$="_hint"],[class$="_groupSub"],[class$="_itemDesc"]) {font-weight:400!important;color:var(--codsh-description)!important;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] :is([class$="_title"],[class$="_settingTitle"],[class$="_cardTitle"],[class$="_cardName"],[class$="_rowName"],[class$="_name"],[class$="_amount"],[class$="_groupTitle"],[class$="_groupHead"],[class$="_presetSettingsTitle"],[class$="_heading"]) {font-weight:600!important;color:var(--codsh-title)!important;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] :is([class$="_description"],[class$="_settingDescription"],[class$="_cardDescription"],[class$="_cardDesc"],[class$="_intro"],[class$="_hint"],[class$="_groupSub"],[class$="_itemDesc"]) {font-weight:400!important;color:var(--codsh-description)!important;}
 /* Unified model/effort pill and compact two-level picker. */
 :has(>[data-codsh-model-trigger][data-codsh-split-model]) {position:relative;}
 /* Keep the native floating-panel anchor measurable over the visible pill. */

@@ -90,12 +90,13 @@ test('combined picker opens effort first without extra icons and routes model-na
 
 test('settings typography covers account, plugin and preset cards while preserving code fonts',async()=>{
   const env=setup(),d=env.document;
-  d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><span class="account_amount">¥100</span><span class="general_title">快捷键</span><span class="plugin_cardTitle extra">工具</span><span class="preset_cardName">标准模式</span><p class="preset_cardDesc">说明</p><code><span id="code-font">const x=1</span></code></div>');
+  d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><span class="account_amount">¥100</span><span class="general_title">网页链接默认打开方式</span><div class="shortcuts_settingTitle extra">快捷键</div><p class="shortcuts_settingDescription">查看和编辑当前可用的快捷键和输入操作</p><span class="plugin_cardTitle extra">工具</span><span class="preset_cardName">标准模式</span><p class="preset_cardDesc">说明</p><code><span id="code-font">const x=1</span></code></div>');
   await settle();
-  for(const node of d.querySelectorAll('.account_amount,.general_title,.plugin_cardTitle,.preset_cardName')){
+  for(const node of d.querySelectorAll('.account_amount,.general_title,.shortcuts_settingTitle,.plugin_cardTitle,.preset_cardName')){
     const style=env.dom.window.getComputedStyle(node);assert.equal(style.fontWeight,'600');assert.equal(style.fontFamily,'var(--codsh-ui-font)');assert.equal(style.color,'var(--codsh-title)');
   }
   assert.equal(env.dom.window.getComputedStyle(d.querySelector('.preset_cardDesc')).fontWeight,'400');
+  assert.equal(env.dom.window.getComputedStyle(d.querySelector('.shortcuts_settingDescription')).fontWeight,'400');
   const fontRule=Array.from(d.querySelector('[data-codsh-style]').sheet.cssRules).find(rule=>rule.style?.getPropertyPriority('font-family')==='important');
   assert.ok(fontRule);assert.equal(d.querySelector('#code-font').matches(fontRule.selectorText),false);
   env.dispose();env.dom.window.close();
