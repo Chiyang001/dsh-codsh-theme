@@ -146,6 +146,7 @@ export function apply(ctx) {
     };
     mark(document.documentElement,'data-codsh-theme');
     const refinements = createRefinements(mark);
+    const backgrounds = createBackgrounds(ctx,mark);
     const projectSearch=createProjectSearch(ctx);
     let remoteDisposer,actionsDisposed=false;
     const deleteRemote=ctx.remote.$mount(contribution).then(dispose=>{
@@ -189,6 +190,7 @@ export function apply(ctx) {
       document.querySelectorAll(local('triggerLabel')).forEach(label => {
         const permissionButton=label.closest('button');
         if(permissionButton&&permissionButton.querySelector(local('triggerIcon'))&&!permissionButton.querySelector(local('triggerEffort'))){
+          mark(permissionButton,'data-codsh-permission-trigger');
           mark(permissionButton,'data-codsh-full-access',String(/^(完全权限|完全访问|Full access)$/i.test(label.textContent.trim())));
         }
         const trigger = label.closest('button[aria-haspopup="menu"]');
@@ -198,9 +200,20 @@ export function apply(ctx) {
         if (menuId) mark(document.getElementById(menuId),'data-codsh-model-menu');
       });
       refinements.refresh();
-      document.querySelectorAll('[role="menu"] button[role="menuitem"]').forEach(button=>{
-        const label=button.querySelector(local('optionLabelText'))||button.querySelector(local('itemLabel'));
+      backgrounds.refresh();
+      document.querySelectorAll('[role="menu"] button[role="menuitem"],[role="menu"] button[role="menuitemradio"]').forEach(button=>{
+        const label=button.querySelector(local('optionLabelText'))||button.querySelector(local('itemLabel'))||Array.from(button.querySelectorAll('span')).find(node=>/^(仅可查看|只读|工作区内修改|完全权限|完全访问|Read Only|Workspace Write|Full access)$/i.test(node.textContent.trim()));
         if(label)mark(button,'data-codsh-full-access-option',String(/^(完全权限|完全访问|Full access)$/i.test(label.textContent.trim())));
+      });
+      document.querySelectorAll('[role="menu"]').forEach(menu=>{
+        if(!menu.querySelector('[data-codsh-full-access-option="true"]'))return;
+        mark(menu,'data-codsh-permission-menu');
+        const descriptions=[[/仅可查看|只读|read.only/i,'允许查看文件，不修改内容'],[/工作区内修改|workspace.write/i,'允许读取文件并修改当前工作区'],[/完全权限|完全访问|full access/i,'允许修改本机文件、访问网络和执行命令'],[/自动|auto/i,'由 Harness 自动处理权限请求，遵循原生审批规则'],[/默认|default/i,'使用 Harness 默认的文件访问和命令执行权限'],[/批准|审批|approval/i,'按照当前模式的原生审批规则处理操作请求']];
+        menu.querySelectorAll('button[role="menuitem"],button[role="menuitemradio"]').forEach(button=>{
+          const label=button.querySelector(local('optionLabelText'))||button.querySelector(local('itemLabel'))||Array.from(button.querySelectorAll('span')).find(node=>/^(仅可查看|只读|工作区内修改|完全权限|完全访问|Read Only|Workspace Write|Full access)$/i.test(node.textContent.trim()));if(!label)return;
+          const name=label.textContent.trim();
+          mark(label,'data-codsh-permission-description',descriptions.find(([pattern])=>pattern.test(name))?.[1]||button.title||`使用“${name}”权限模式`);
+        });
       });
       document.querySelectorAll('[role="menu"],[role="dialog"],[role="tooltip"]').forEach(node => {
         if (node.closest('[data-codsh-model-menu]')) return;
@@ -233,12 +246,12 @@ export function apply(ctx) {
             const tools=document.createElement('div');tools.className='codsh-rail-tools';
             tools.append(home);
             for(const [label,path,action] of [
-              ['最近会话','M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18Z M12 7v5l3 2',()=>{
+              ['最近会话','M14 14H7.5l-3.1 2.4a.55.55 0 0 1-.9-.4V5a1.5 1.5 0 0 1 1.5-1.5h10A1.5 1.5 0 0 1 16.5 5v5 M10 14v3a1.5 1.5 0 0 0 1.5 1.5h5l3.1 2.4a.55.55 0 0 0 .9-.4v-9a1.5 1.5 0 0 0-1.5-1.5h-6A1.5 1.5 0 0 0 11.5 12',()=>{
                 revealConversation();selectSidebar('recent');
                 const toggle=root.querySelector('.codsh-recent .codsh-section-toggle');if(toggle?.getAttribute('aria-expanded')==='false')toggle.click();
                 root.querySelector('.codsh-recent')?.scrollIntoView?.({block:'nearest',behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
               }],
-              ['项目','M3 6h6l2 2h10v12H3z',()=>{
+              ['项目','M3 8V6a1.5 1.5 0 0 1 1.5-1.5h4a2 2 0 0 1 1.4.6L12 7.5h7.5A1.5 1.5 0 0 1 21 9v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18Z',()=>{
                 revealConversation();selectSidebar('projects');
                 const toggle=root.querySelector('.codsh-projects-toggle');if(toggle?.getAttribute('aria-expanded')==='false')toggle.click();toggle?.focus();
               }],
@@ -396,7 +409,13 @@ export function apply(ctx) {
     // are added; workspace/session changes trigger one coalesced refresh.
     let queued = false;
     let disposed = false;
-    const observer = new MutationObserver(() => {
+    const observer = new MutationObserver(records => {
+      // Slider preview and particles are locally owned animation updates.
+      // They must not trigger a full-document refresh on every frame.
+      if(records.every(record=>{
+        const node=record.target.nodeType===1?record.target:record.target.parentElement;
+        return node?.closest?.('.codsh-effort-control,.codsh-reasoning-trigger');
+      }))return;
       if (queued || disposed) return;
       queued = true;
       queueMicrotask(() => { queued = false; if (!disposed) refresh(); });
@@ -418,6 +437,7 @@ export function apply(ctx) {
       unsubscribeSessions();
       unsubscribeWorkspaces();
       refinements.dispose();
+      backgrounds.dispose();
       projectSearch.dispose();
       for(const title of temporaryTitles.values())title.remove();temporaryTitles.clear();
       for(const title of heroTitles.values())title.remove();heroTitles.clear();

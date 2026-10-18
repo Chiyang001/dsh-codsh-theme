@@ -5,11 +5,13 @@ const source = await readFile(new URL('../src/client.js', import.meta.url), 'utf
 const refinements = await readFile(new URL('../src/refinements.js', import.meta.url), 'utf8');
 const actions = await readFile(new URL('../src/sidebar-actions.js', import.meta.url), 'utf8');
 const search = await readFile(new URL('../src/search.js', import.meta.url), 'utf8');
+const backgrounds = await readFile(new URL('../src/backgrounds.js', import.meta.url), 'utf8');
+const presets = await Promise.all(['cyber','forest','latte','midnight','mono','ocean','sakura','wind'].map(async id => ({id,url:'data:image/webp;base64,'+(await readFile(new URL(`../themes/${id}.webp`,import.meta.url))).toString('base64')})));
 const contract = (await readFile(new URL('../remote-contract.js', import.meta.url),'utf8')).replace(/^export /gm,'');
 // CSS module locals may be followed by another class. Normalize every rule,
 // instead of leaving one-off selector fixes scattered through the stylesheet.
 const scopedCss = css.replace(/\[class\$="(_[\w-]+)"\]/g, (_,name) => `:is([class$="${name}"],[class*="${name} "])`);
 await mkdir(new URL('../dist/', import.meta.url), {recursive:true});
 await writeFile(new URL('../dist/client.js', import.meta.url),
-  `window.__ModuleLoader__.load({id:${JSON.stringify(manifest.name)},factory:(require)=>{\nconst THEME_CSS=${JSON.stringify(scopedCss)};\n${contract}\n${actions}\n${search}\n${refinements}\n${source.replace(/^export /gm, '')}\nreturn {inject,apply};\n}});\n`);
+  `window.__ModuleLoader__.load({id:${JSON.stringify(manifest.name)},factory:(require)=>{\nconst BACKGROUND_PRESETS=${JSON.stringify(presets)};\nconst THEME_CSS=${JSON.stringify(scopedCss)};\n${contract}\n${actions}\n${search}\n${backgrounds}\n${refinements}\n${source.replace(/^export /gm, '')}\nreturn {inject,apply};\n}});\n`);
 console.log('Built dist/client.js');

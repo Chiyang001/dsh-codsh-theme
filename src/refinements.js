@@ -128,7 +128,9 @@ function createRefinements(mark) {
         const button = document.createElement('button'); button.type = 'button';
         button.className = 'codsh-reasoning-trigger'; button.setAttribute('aria-haspopup','menu');
         const caption = document.createElement('span');button.append(caption,chevron());
-        view = {button,caption,trigger,pending:false,open:false};
+        caption.className='codsh-combined-effort';
+        const modelCaption=document.createElement('span');modelCaption.className='codsh-combined-model';button.prepend(modelCaption);
+        view = {button,caption,modelCaption,trigger,pending:false,open:false};
         button.addEventListener('click',() => {
           if(view.open){closeEffort(view);return;}
           view.open=true;view.closed=false;
@@ -139,11 +141,15 @@ function createRefinements(mark) {
         trigger.parentElement.append(button); modelViews.set(trigger,view);
       }
       mark(trigger,'data-codsh-split-model');
+      mark(trigger,'tabindex','-1');mark(trigger,'aria-hidden','true');
       const targetOption=view.control?.targetIndex!==undefined?view.options?.[view.control.targetIndex]:null;
       const targetLabel=targetOption?(targetOption.querySelector(local('modelName'))?.textContent.trim()||targetOption.textContent.trim()):null;
       text(view.caption,effortLabel(targetLabel||effort.textContent.trim()));
+      const modelLabel=trigger.querySelector(local('triggerLabel'))?.textContent.trim()||'选择模型';
+      text(view.modelCaption,modelLabel);
+      if(view.control?.modelButton)text(view.control.modelButton,modelLabel+' ›');
       if(view.button.disabled !== trigger.disabled)view.button.disabled = trigger.disabled;
-      view.button.setAttribute('aria-label',`调整思考强度：${effortLabel(effort.textContent.trim())}`);
+      view.button.setAttribute('aria-label',`${modelLabel}，调整思考强度：${effortLabel(effort.textContent.trim())}`);
       const id = trigger.getAttribute('aria-controls');
       const menu = id ? document.getElementById(id) : null;
       const existing=view.control;
@@ -185,18 +191,21 @@ function createRefinements(mark) {
       if (!control) {
         const panel = document.createElement('div');panel.className = 'codsh-effort-control';
         const title = document.createElement('strong');title.className = 'codsh-effort-title';
+        const modelButton=document.createElement('span');modelButton.className='codsh-effort-model';modelButton.textContent=modelLabel+' ›';
+        const heading=document.createElement('button');heading.type='button';heading.className='codsh-effort-heading';heading.setAttribute('aria-label','选择模型');heading.append(title,modelButton);
+        heading.onclick=()=>{closeEffort(view);setTimeout(()=>{if(trigger.isConnected&&!trigger.disabled)trigger.click();},0);};
         const track = document.createElement('div');track.className = 'codsh-effort-track';
         const fill = document.createElement('div');fill.className = 'codsh-effort-fill';
         const sparks = document.createElement('div');sparks.className = 'codsh-effort-sparks';sparks.setAttribute('aria-hidden','true');
-        for(let i=0;i<28;i++) { const spark=document.createElement('i');spark.style.setProperty('--i',String(i));spark.style.setProperty('--arc',((i%2?1:-1)*(4+(i%5)*2))+'px');spark.style.setProperty('--duration',(1.25+(i%4)*.18)+'s');spark.style.setProperty('--dot-size',(2+(i%3)*.6)+'px');sparks.append(spark); }
+        for(let i=0;i<12;i++) { const spark=document.createElement('i');spark.style.setProperty('--i',String(i));spark.style.setProperty('--arc',((i%2?1:-1)*(4+(i%5)*2))+'px');spark.style.setProperty('--duration',(1.25+(i%4)*.18)+'s');spark.style.setProperty('--dot-size',(2+(i%3)*.6)+'px');sparks.append(spark); }
         const thumb=document.createElement('div');thumb.className='codsh-effort-thumb';
-        const range = document.createElement('input');range.type = 'range';range.min = '0';range.step = '0.01';
+        const range = document.createElement('input');range.type = 'range';range.min = '0';range.step = 'any';
         range.setAttribute('aria-label','思考强度');
         const ticks = document.createElement('div');ticks.className = 'codsh-effort-ticks';
-        fill.append(sparks);track.append(fill,thumb,range);panel.append(title,track,ticks);
+        fill.append(sparks);track.append(fill,thumb,range,ticks);panel.append(heading,track);
         panel.setAttribute('role','dialog');panel.setAttribute('aria-label','调整思考强度');
         const rect=view.button.getBoundingClientRect();
-        panel.style.left=`${Math.max(8,Math.min(rect.right-280,window.innerWidth-288))}px`;
+        panel.style.left=`${Math.max(8,Math.min(rect.right-260,window.innerWidth-268))}px`;
         panel.style.bottom=`${Math.max(8,window.innerHeight-rect.top+8)}px`;
         trigger.parentElement.append(panel);
         if(typeof window.requestAnimationFrame==='function'&&!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
@@ -209,7 +218,7 @@ function createRefinements(mark) {
             particles.forEach((dot,i)=>{
               const duration=1050+(i%5)*90;
               const phase=((time-epoch)/duration+i/particles.length)%1;
-              const travel=phase*phase;
+              const travel=phase;
               const radius=(thumbBox.width||32)/2;
               const originY=Math.sin(i*2.399963)*Math.min(radius-2,fillBox.height*.4);
               const nozzle=Math.max(0,thumbBox.left-fillBox.left+radius-Math.sqrt(radius*radius-originY*originY)-2);
@@ -222,9 +231,12 @@ function createRefinements(mark) {
           };
           window.requestAnimationFrame(paintJet);
         }
-        control = {panel,title,track,range,ticks,signature:null};view.control=control;effortViews.set(menu,control);
+        control = {panel,title,modelButton,track,range,ticks,signature:null};view.control=control;effortViews.set(menu,control);
         const commit=index=>{
           const option=view.options?.[index];if(!option||trigger.disabled||(option.isConnected&&option.disabled))return;
+          track.removeAttribute('data-dragging');
+          // Resolve the current preview before starting the snap transition.
+          getComputedStyle(track).getPropertyValue('--ratio');
           range.value=String(index);preview();
           control.targetIndex=index;
           if(option.isConnected){option.click();}
@@ -238,12 +250,38 @@ function createRefinements(mark) {
           const label=option.querySelector(local('modelName'))?.textContent.trim() || option.textContent.trim();
           text(title,effortLabel(label));range.setAttribute('aria-valuetext',effortLabel(label));
           const ratio=options.length>1?position/(options.length-1):0;
+          track.toggleAttribute('data-at-minimum',position<=0);
           track.style.setProperty('--progress',`${ratio*100}%`);
           track.style.setProperty('--ratio',String(ratio));
           panel.classList.toggle('codsh-effort-max',/\b(max|ultra)\b/i.test(label));
           panel.classList.toggle('codsh-effort-ultra',/\bultra\b/i.test(label));
         };
         control.preview=preview;
+        let drag;
+        const pointerPosition=event=>{
+          const rect=drag.rect,last=(view.options?.length||1)-1;
+          return Math.max(0,Math.min(1,(event.clientX-rect.left-16)/Math.max(1,rect.width-32)))*last;
+        };
+        range.addEventListener('pointerdown',event=>{
+          if(event.button!==0||range.disabled)return;
+          event.preventDefault();range.focus({preventScroll:true});
+          drag={id:event.pointerId,x:event.clientX,rect:range.getBoundingClientRect(),initial:range.value,moved:false};
+          range.setPointerCapture?.(event.pointerId);
+        });
+        range.addEventListener('pointermove',event=>{
+          if(!drag||drag.id!==event.pointerId)return;
+          if(!drag.moved&&Math.abs(event.clientX-drag.x)<3)return;
+          drag.moved=true;track.setAttribute('data-dragging','');
+          range.value=String(pointerPosition(event));preview();
+        });
+        range.addEventListener('pointerup',event=>{
+          if(!drag||drag.id!==event.pointerId)return;
+          const index=Math.round(pointerPosition(event));drag=undefined;commit(index);
+        });
+        range.addEventListener('pointercancel',()=>{
+          if(!drag)return;
+          range.value=drag.initial;drag=undefined;track.removeAttribute('data-dragging');preview();
+        });
         range.addEventListener('input',preview);
         range.addEventListener('keydown',event => {
           if(event.key==='Escape')return;
@@ -272,7 +310,7 @@ function createRefinements(mark) {
       if(control.signature!==signature) {
         control.signature=signature;
         control.ticks.replaceChildren(...labels.map((label,index)=>{
-          const button=document.createElement('button');button.type='button';button.textContent=effortLabel(label);
+          const button=document.createElement('button');button.type='button';button.setAttribute('aria-label',effortLabel(label));button.title=effortLabel(label);
           button.addEventListener('click',()=>control.commit(index));
           return button;
         }));
@@ -286,6 +324,7 @@ function createRefinements(mark) {
         control.range.setAttribute('aria-valuetext',effortLabel(labels[display]));
         control.track.style.setProperty('--progress',`${labels.length>1?display/(labels.length-1)*100:0}%`);
         control.track.style.setProperty('--ratio',String(labels.length>1?display/(labels.length-1):0));
+        control.track.toggleAttribute('data-at-minimum',display<=0);
         control.panel.classList.toggle('codsh-effort-max',/\b(max|ultra)\b/i.test(labels[display]));
         control.panel.classList.toggle('codsh-effort-ultra',/\bultra\b/i.test(labels[display]));
       }

@@ -66,7 +66,7 @@ function createSidebarActions(ctx,mark,onChange,deleteSession,deleteProject) {
     }
     for(const [label,action] of actions){const button=document.createElement('button');button.type='button';button.setAttribute('role','menuitem');button.append(icon(label.includes('置顶')?'pin':label==='重命名'?'rename':label.includes('归档')?'archive':label.includes('资源管理器')?'folder':'delete'),document.createTextNode(label));
       button.onclick=async()=>{closeMenu();try{await action();}catch(reason){form('操作失败',null,reason.message||String(reason),async()=>{},'关闭');}};menu.append(button);}
-    const rect=row.getBoundingClientRect();menu.style.left=`${Math.max(8,Math.min(event?.clientX||rect.right,window.innerWidth-240))}px`;menu.style.top=`${Math.max(8,Math.min(event?.clientY||rect.bottom,window.innerHeight-actions.length*36-16))}px`;
+    const rect=row.getBoundingClientRect();menu.style.left=`${Math.max(8,Math.min(event?.clientX||rect.right,window.innerWidth-188))}px`;menu.style.top=`${Math.max(8,Math.min(event?.clientY||rect.bottom,window.innerHeight-actions.length*36-16))}px`;
     document.body.append(menu);menu.firstElementChild.focus();
   }
   const context=event=>{const row=event.target.closest?.('.codsh-session,[data-row-key^="session:"],[data-row-key^="workspace:"]');if(row?.closest('[data-codsh-sidebar]')&&!row.closest('.codsh-sidebar-exit'))open(row,event);};

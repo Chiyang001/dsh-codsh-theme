@@ -47,13 +47,15 @@ html[data-codsh-theme] {
   --codsh-text:var(--codsh-tone-dedede); --codsh-muted:var(--codsh-tone-929292); --codsh-border:var(--codsh-tone-323232);
   --codsh-accent:#3478cf; --codsh-fast:150ms; --codsh-motion:240ms;
   --codsh-ease:cubic-bezier(.22,1,.36,1);
-  --dsw-font-family:"Segoe UI","Microsoft YaHei UI",system-ui,sans-serif;
+  --codsh-ui-font:"Noto Sans SC","Source Han Sans SC","PingFang SC","Microsoft YaHei UI","Segoe UI",system-ui,sans-serif;
+  --dsw-font-family:var(--codsh-ui-font);
   --ds-font-family:var(--dsw-font-family); --ds-font-family-code:"Cascadia Code",Consolas,monospace;
   --dsw-radius-sm:8px; --dsw-radius-md:9px; --dsw-radius-lg:14px; --dsw-radius-xl:20px; --dsw-radius-panel:22px;
   --ds-transition-duration:180ms; --ds-transition-duration-slow:240ms;
   --ds-ease-in-out:var(--codsh-ease);
 }
 html[data-codsh-theme] body {background:var(--codsh-base);font-family:var(--dsw-font-family);}
+html[data-codsh-theme] :is(button,input,select,textarea,[role="menu"],[role="dialog"],[role="tooltip"]) {font-family:var(--codsh-ui-font);}
 html[data-codsh-theme] button {transition:background-color var(--codsh-fast) ease,color var(--codsh-fast) ease,box-shadow var(--codsh-fast) ease;}
 html[data-codsh-theme] button[data-codsh-full-access="true"],html[data-codsh-theme] button[data-codsh-full-access="true"] [class$="_triggerIcon"],html[data-codsh-theme] button[data-codsh-full-access="true"] [class$="_triggerLabel"] {color:#ff823d!important;}
 html[data-codsh-theme] [data-codsh-full-access-option="true"],html[data-codsh-theme] [data-codsh-full-access-option="true"] :is([class$="_itemIcon"],[class$="_itemLabel"],[class$="_optionLabelText"],[class$="_check"]) {color:#ff823d!important;}
@@ -89,7 +91,7 @@ html[data-codsh-theme] [class$="_body"]:has([data-composer-seat]) {
 .codsh-home {width:36px;height:36px;display:grid;place-items:center;border:0;border-radius:9px;color:var(--codsh-tone-b0b0b0);background:transparent;cursor:pointer;}
 .codsh-home svg {width:18px;height:18px;}
 .codsh-rail-button {width:36px;height:36px;padding:8px;display:grid;place-items:center;border:0;border-radius:9px;background:transparent;color:var(--codsh-tone-b0b0b0);cursor:pointer;}
-.codsh-rail-button svg {width:18px;height:18px;}
+.codsh-rail-button svg {width:20px;height:20px;flex:none;}
 .codsh-rail-button:hover {background:var(--codsh-tone-34353c);color:var(--codsh-tone-eee);}
 .codsh-rail-tools button[aria-pressed="true"] {background:var(--codsh-tone-34353c);color:var(--codsh-tone-eee);}
 [data-codsh-sidebar][data-codsh-view="recent"] [data-codsh-workspaces]>[class$="_sectionHeader"],
@@ -101,6 +103,9 @@ html[data-codsh-theme] [class$="_body"]:has([data-composer-seat]) {
 [data-codsh-sidebar] [class$="_panelList"] {position:absolute;top:143px;left:7px;width:36px;gap:9px;margin:0;}
 [data-codsh-sidebar] [class$="_panelRow"] {width:36px;height:36px;margin:0;padding:8px;justify-content:center;color:var(--codsh-tone-b0b0b0);border-radius:9px;}
 [data-codsh-sidebar] [class$="_panelTitle"] {display:none!important;}
+[data-codsh-sidebar] [class$="_panelGlyph"] {width:20px;height:20px;display:grid;place-items:center;flex:none;}
+[data-codsh-sidebar] [class$="_panelGlyph"] svg {width:20px!important;height:20px!important;display:block;flex:none;}
+[data-codsh-sidebar] [class$="_panelGlyph"] svg :is(path,circle,ellipse,rect,line,polyline,polygon) {stroke-linecap:round;stroke-linejoin:round;}
 [data-codsh-sidebar] [class$="_logoRow"] {height:42px!important;margin:0 0 4px!important;padding-left:9px!important;}
 [data-codsh-sidebar] [class$="_brandIdentity"] {gap:0;}
 [data-codsh-sidebar] [class$="_brandMark"],[data-codsh-sidebar] [class$="_brandName"] {display:none;}
@@ -155,7 +160,7 @@ html[data-codsh-theme] [class$="_body"]:has([data-composer-seat]) {
 .codsh-row-pin[aria-pressed="true"] {color:var(--codsh-tone-eee);}
 .codsh-row-pin:hover,.codsh-row-menu:hover {background:transparent;color:var(--codsh-text);}
 :is(.codsh-session-container,[data-codsh-sidebar] [class$="_projectRow"],[data-codsh-sidebar] [class$="_sessionRow"]):is(:hover,:focus-within)>.codsh-row-menu {opacity:1;}
-.codsh-actions-menu {position:fixed;z-index:11000;width:224px;padding:5px;border:1px solid var(--codsh-tone-383838);border-radius:12px;background:var(--codsh-tone-252525);box-shadow:0 12px 40px #0007;}
+.codsh-actions-menu {box-sizing:border-box;position:fixed;z-index:11000;width:180px;max-width:calc(100vw - 16px);padding:5px;border:1px solid var(--codsh-tone-383838);border-radius:12px;background:var(--codsh-tone-252525);box-shadow:0 12px 40px #0007;}
 .codsh-actions-menu button {display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;border-radius:7px;background:transparent;color:var(--codsh-tone-ddd);text-align:left;cursor:pointer;}
 .codsh-actions-menu button:hover {background:var(--codsh-tone-383838);}
 .codsh-action-mask {position:fixed;inset:0;z-index:11001;display:grid;place-items:center;background:#0008;}
@@ -227,10 +232,13 @@ html[data-codsh-theme] [data-composer-stats] [class$="_label"] {white-space:norm
 .codsh-effort-control {position:fixed;z-index:10000;box-sizing:border-box;width:280px;max-width:calc(100vw - 16px);padding:12px 14px;border:1px solid var(--codsh-tone-363636);border-radius:18px;background:var(--codsh-raised);box-shadow:0 12px 40px #0005;text-align:center;animation:codsh-popup 180ms var(--codsh-ease);}
 .codsh-effort-title {display:block;margin-bottom:8px;color:var(--codsh-accent);font:600 14px/24px var(--dsw-font-family);}
 .codsh-effort-track {position:relative;height:24px;overflow:visible;border-radius:20px;background:var(--codsh-tone-383838);--progress:0%;}
-.codsh-effort-fill {position:absolute;inset:2px auto 2px 2px;width:calc(14px + (100% - 32px)*var(--ratio,0));background:var(--codsh-accent);border-radius:20px;overflow:hidden;transition:width 180ms var(--codsh-ease);pointer-events:none;}
+.codsh-effort-fill {position:absolute;inset:0 auto 0 0;width:calc(16px + (100% - 32px)*var(--ratio,0));background:var(--codsh-accent);border-radius:999px;overflow:hidden;pointer-events:none;z-index:1;}
+.codsh-effort-track[data-at-minimum] .codsh-effort-fill {visibility:hidden;}
 .codsh-effort-fill::before {display:none;}
-html[data-codsh-theme] .codsh-effort-control .codsh-effort-thumb {box-sizing:border-box!important;min-width:32px!important;max-width:32px!important;min-height:32px!important;max-height:32px!important;aspect-ratio:1!important;clip-path:circle(50%)!important;border-radius:50%!important;position:absolute;top:-4px;left:calc((100% - 32px)*var(--ratio,0));width:32px;height:32px;border-radius:50%;background:white;box-shadow:0 1px 5px #0003;pointer-events:none;transition:left 180ms var(--codsh-ease);z-index:2;}
-.codsh-effort-track input {appearance:none;position:absolute;inset:-4px 0;margin:0;width:100%;height:32px;background:transparent;cursor:pointer;}
+html[data-codsh-theme] .codsh-effort-control .codsh-effort-thumb {box-sizing:border-box!important;min-width:32px!important;max-width:32px!important;min-height:32px!important;max-height:32px!important;aspect-ratio:1!important;corner-shape:round!important;clip-path:circle(50% at 50% 50%)!important;border-radius:50%!important;position:absolute;top:0;left:calc((100% - 32px)*var(--ratio,0));width:32px;height:32px;padding:0;border:0;background:white;box-shadow:none;pointer-events:none;z-index:2;}
+.codsh-effort-track input {box-sizing:border-box;appearance:none;position:absolute;inset:0;margin:0;padding:0;border:0;width:100%;height:32px;background:transparent;cursor:pointer;}
+.codsh-effort-track input::-webkit-slider-runnable-track {height:32px;border:0;background:transparent;}
+.codsh-effort-track input::-moz-range-track {height:32px;border:0;background:transparent;}
 .codsh-effort-track input::-webkit-slider-thumb {appearance:none;width:32px;height:32px;border-radius:50%;background:transparent;}
 .codsh-effort-track input::-moz-range-thumb {width:32px;height:32px;border:0;border-radius:50%;background:transparent;}
 .codsh-effort-track:focus-within {outline:none;}
@@ -255,15 +263,39 @@ html[data-codsh-theme] [data-shortcut-modal="settings"] {position:fixed;inset:va
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_nav"] {width:260px;padding:18px 10px 12px;background:var(--codsh-sidebar);border-right:1px solid var(--codsh-tone-303030);}
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_navTitle"] {font-size:18px;font-weight:600;}
 html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_navCell"] {height:30px;min-height:30px;padding:5px 9px;border-radius:7px;font-size:13px;line-height:20px;}
-html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] {padding:34px 30px 60px;scrollbar-width:thin;}
-/* Slot hosts can wrap the section; keep the width override through those hosts. */
-html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] [class$="_section"] {box-sizing:border-box;width:100%;min-width:0;max-width:none!important;margin-inline:0;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] {box-sizing:border-box;padding:40px max(32px, calc((100% - 800px) / 2)) 64px;scrollbar-width:thin;font-size:13px;line-height:20px;}
+/* Center every settings tab, including sections inside extension slot hosts. */
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_section"],[class*="_section "]) {box-sizing:border-box;width:100%;min-width:0;max-width:800px!important;margin-inline:auto;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_row"],[data-slot="settings.general.item"]) {box-sizing:border-box;min-height:48px;height:auto;padding-block:10px;gap:16px;font-size:13px;line-height:20px;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_title"],[class$="_rowName"],[class$="_name"],[class$="_editorTitle"]) {font-size:13px;line-height:20px;font-weight:600;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_description"],[class$="_intro"]) {margin-top:2px;font-size:12px;line-height:18px;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_rowCard"],[class$="_setupCard"],[class$="_balanceCard"]) {padding:10px 14px;gap:8px;border-radius:14px;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is(button:not([role="switch"]),select,input:not([type="checkbox"]):not([type="radio"]):not([type="range"])) {font-size:12px;line-height:18px;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_addButton"],[class$="_secondaryButton"],[class$="_linkButton"],[class$="_dangerButton"],[class$="_selectTrigger"]) {min-height:28px;height:auto;padding:5px 10px;border-radius:8px;}
 html[data-codsh-theme] [data-shortcut-modal="settings"] .codsh-settings-search {box-sizing:border-box;width:100%;min-width:0;height:38px;padding:8px 14px 8px 36px;border:0!important;border-radius:999px!important;background-color:var(--codsh-hover);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23929292' stroke-width='1.7' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m16 16 5 5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:12px center;background-size:16px 16px;color:var(--codsh-text);font:13px/20px var(--dsw-font-family);}
 .codsh-settings-search::placeholder {color:var(--codsh-muted);opacity:1;}
 .codsh-settings-back {margin-top:auto;width:100%;padding:10px 12px;border:0;border-radius:9px;background:var(--codsh-tone-2d2d2d);color:var(--codsh-tone-dedede);font:14px/20px var(--dsw-font-family);text-align:left;cursor:pointer;}
 [data-codsh-settings-filtered] {display:none!important;}
-html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_section"]:has([data-slot="settings.general.item"]) {box-sizing:border-box;width:100%;margin:0;padding:16px;background:var(--codsh-tone-242424);border:1px solid var(--codsh-tone-323232);border-radius:18px;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_section"]:has([data-slot="settings.general.item"]) {box-sizing:border-box;width:100%;margin:0 auto;padding:4px 16px;background:var(--codsh-tone-242424);border:1px solid var(--codsh-tone-323232);border-radius:16px;}
 /* Chat surfaces and native review/navigation chrome. */
+[data-codsh-native-appearance] {display:none!important;}
+.codsh-appearance {padding:4px 0 14px;}
+.codsh-appearance-mode {display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:13px;}
+.codsh-appearance-mode select {min-width:128px;padding:6px 10px;border:1px solid var(--codsh-tone-404040);border-radius:8px;background:var(--codsh-raised);color:var(--codsh-text);}
+.codsh-appearance h3 {margin:20px 0 10px;font-size:13px;font-weight:500;}
+.codsh-background-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:10px;}
+.codsh-background-grid button {min-width:0;padding:5px 5px 8px;border:1px solid var(--codsh-tone-404040);border-radius:10px;background:var(--codsh-raised);color:var(--codsh-text);text-align:left;cursor:pointer;}
+.codsh-background-grid button[aria-pressed="true"] {border-color:var(--codsh-text);box-shadow:0 0 0 1px var(--codsh-text);}
+.codsh-background-preview {display:block;aspect-ratio:16/9;margin-bottom:6px;border-radius:6px;background:var(--codsh-base) center/cover;}
+.codsh-background-upload {margin-top:12px;padding:6px 10px;border:1px solid var(--codsh-tone-404040);border-radius:8px;background:var(--codsh-raised);color:var(--codsh-text);cursor:pointer;}
+.codsh-background-status {min-height:18px;margin:6px 0 0;font-size:12px;color:var(--codsh-muted);}
+/* Windows centerCol and conversation roots paint opaque surfaces above frame.
+   Paint the wallpaper on those actual surfaces, with viewport-aligned sizing. */
+html[data-codsh-theme][data-codsh-background] :is([class$="_centerCol"],[data-shortcut-modal="settings"]) {background-color:var(--codsh-base)!important;background-image:linear-gradient(color-mix(in srgb,var(--codsh-base) 48%,transparent),color-mix(in srgb,var(--codsh-base) 48%,transparent)),var(--codsh-background-image)!important;background-position:center!important;background-size:cover!important;background-repeat:no-repeat!important;background-attachment:scroll!important;}
+/* One stationary wallpaper owner; animated/scrolling children never repaint it. */
+html[data-codsh-theme][data-codsh-background] :is([class$="_root"][data-phase],[class$="_embeddedBody"],[data-codsh-automation],[data-codsh-trajectory]) {background:transparent!important;}
+html[data-codsh-theme][data-codsh-background] [class$="_frame"] :is([class$="_main"],[class$="_mainArea"],[class$="_conversation"],[data-phase]) {background-color:transparent;}
+html[data-codsh-theme][data-codsh-background] [data-codsh-sidebar] {background:color-mix(in srgb,var(--codsh-sidebar) 85%,transparent);}
 /* The control and its tab strip are the same element, and this rule's own 2px
    padding replaces the skeleton's 8px inset. Pull the box back by that padding
    so its left edge meets the title text, which the header pads 20px to. */
@@ -392,7 +424,7 @@ html[data-codsh-theme][data-windows-titlebar] [data-codsh-sidebar] [class$="_tog
 html[data-codsh-theme][data-windows-titlebar] [data-codsh-sidebar] [class$="_toggle"] [class$="_panelIcon"] {display:inline!important;}
 html[data-codsh-theme][data-windows-titlebar] [data-codsh-sidebar] [class$="_toggle"] [class$="_railMark"] {display:none!important;}
 /* Selected rail icons carry a stronger silhouette in every theme. */
-.codsh-rail-tools button[aria-pressed="true"] svg path {stroke-width:2.5;}
+.codsh-rail-tools button[aria-pressed="true"] svg path {stroke-width:2;}
 [data-codsh-sidebar] [aria-current="page"] {background:var(--codsh-hover);color:var(--codsh-text);}
 [data-codsh-sidebar] [aria-current="page"] [class$="_panelGlyph"] svg {color:var(--codsh-text);filter:drop-shadow(.35px 0 currentColor) drop-shadow(-.35px 0 currentColor);}
 
@@ -423,11 +455,11 @@ html[data-codsh-theme][data-windows-titlebar] [class$="_frame"][data-sidebar-col
 html[data-codsh-theme][data-windows-titlebar] [class$="_frame"][data-sidebar-collapsed] [data-codsh-sidebar][data-codsh-temporary-sidebar] [class$="_logoRow"]>.codsh-temporary-brand {display:block!important;font:600 19px/26px var(--dsw-font-family);color:var(--codsh-text);}
 html[data-codsh-theme] [class$="_frame"][data-sidebar-collapsed] [data-codsh-sidebar][data-codsh-temporary-sidebar]>[class$="_newSession"] {display:flex!important;position:static!important;width:100%;height:34px;min-height:34px;justify-content:flex-start;margin:0 0 5px!important;padding:5px 10px!important;border:0!important;border-radius:9px;background:transparent!important;}
 html[data-codsh-theme] [data-codsh-temporary-sidebar] [class$="_newSession"]::after {content:"新会话";font:13px/20px var(--dsw-font-family);margin-left:6px;}
-/* Slightly tighter assistant reply typography, preserving font-size settings. */
-html[data-codsh-theme] [class$="_body"]>[class$="_markdown"] {line-height:1.5;}
+/* Readable reply text; keep larger user-selected sizes. */
+html[data-codsh-theme] [class$="_body"]>[class$="_markdown"] {font-size:max(16px,calc(var(--dsh-content-font-size,14px) + 2px));line-height:1.75;}
 html[data-codsh-theme] [class$="_body"]>[class$="_markdown"] p {margin-block:10px;}
 html[data-codsh-theme] [class$="_body"]>[class$="_markdown"] :is(ul,ol) {margin-block:10px;}
-html[data-codsh-theme] [class$="_body"]>[class$="_markdown"] li {margin-block:4px;line-height:1.5;}
+html[data-codsh-theme] [class$="_body"]>[class$="_markdown"] li {margin-block:4px;line-height:1.75;}
 /* Match the expanded column geometry rather than inheriting native rail sizing. */
 html[data-codsh-theme] [class$="_frame"][data-sidebar-collapsed] [data-codsh-sidebar][data-codsh-temporary-sidebar] {width:var(--codsh-expanded-sidebar-width,300px)!important;min-width:var(--codsh-expanded-sidebar-width,300px)!important;}
 html[data-codsh-theme] [data-codsh-sidebar] [class$="_newSessionContent"] {width:auto!important;justify-content:flex-start!important;}
@@ -450,3 +482,83 @@ html[data-codsh-theme] [class$="_frame"][data-codsh-sidebar-overlay]:not([data-s
    One continuous phase moves every dot from that nozzle to the fill origin. */
 @keyframes codsh-water-dot {from {--jet-progress:0;} to {--jet-progress:1;}}
 @keyframes codsh-water-fade {0% {opacity:0;scale:.5;} 15% {opacity:.85;} 60% {opacity:.65;scale:1;} 100% {opacity:0;scale:.5;}}
+/* Typography hierarchy: emphasize identity, keep explanatory copy light. */
+html[data-codsh-theme] :is([class$="_rowName"],[class$="_modelName"],[class$="_editorTitle"],[class$="_sectionTitle"],[class$="_groupTitle"],[class$="_heading"],[class$="_fieldLabel"]) {font-family:var(--codsh-ui-font);font-weight:600;}
+html[data-codsh-theme] [data-codsh-model-trigger] [class$="_triggerLabel"],
+html[data-codsh-theme] [data-codsh-model-menu] :is([class$="_optionLabelText"],[class$="_itemLabel"]),
+html[data-codsh-theme] [data-shortcut-modal="settings"] :is([class$="_navLabel"],.codsh-appearance h3,.codsh-appearance-mode),
+html[data-codsh-theme] [data-codsh-sidebar] :is([class$="_projectTitle"],[class$="_workspaceTitle"],[class$="_sessionRow"] [class$="_title"]),
+html[data-codsh-theme] .codsh-session span {font-weight:600;}
+html[data-codsh-theme] :is([class$="_description"],[class$="_intro"],[class$="_hint"],[class$="_helpText"]) {font-family:var(--codsh-ui-font);font-weight:400;}
+/* Keep title contrast independent of the ordinary body-copy palette. */
+html[data-codsh-theme] body {--codsh-title:#f2f2f2;--codsh-description:#a3a3a3;}
+html[data-codsh-theme] body:not([data-ds-dark-theme]) {--codsh-title:#202124;--codsh-description:#62656c;}
+html[data-codsh-theme] :is([class$="_rowName"],[class$="_modelName"],[class$="_editorTitle"],[class$="_sectionTitle"],[class$="_groupTitle"],[class$="_heading"]) {color:var(--codsh-title);}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_title"],[class$="_name"],[class$="_fieldLabel"],.codsh-appearance h3),
+html[data-codsh-theme] [data-codsh-model-trigger] [class$="_triggerLabel"],
+html[data-codsh-theme] [data-codsh-model-menu] :is([class$="_optionLabelText"],[class$="_itemLabel"]),
+html[data-codsh-theme] [data-codsh-sidebar] :is([class$="_projectTitle"],[class$="_workspaceTitle"],[class$="_sessionRow"] [class$="_title"]),
+html[data-codsh-theme] .codsh-session span {color:var(--codsh-title);}
+html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_options"] :is([class$="_description"],[class$="_intro"],[class$="_hint"],[class$="_helpText"]) {color:var(--codsh-description);}
+/* Native pages set fonts on their own text nodes; unify those nodes directly.
+   Exclude code, terminal output, editor content and icon glyphs. */
+html[data-codsh-theme] body :is(div,span,p,a,label,button,input,select,textarea,summary,h1,h2,h3,h4,h5,h6,li,dt,dd,th,td):not(:is(pre,code,kbd,samp,[class*="monaco"],[class*="xterm"],[data-terminal],[class$="_cardId"],[class$="_cardIdentity"],[class$="_entryValue"],[class$="_viewerCode"],[class$="_candidateId"],[class$="_modelReasoningValueInput"],[class$="_icon"],[class$="_glyph"])):not(:is(pre,code,kbd,samp,[class*="monaco"],[class*="xterm"],[data-terminal],[class$="_viewerCode"]) *) {font-family:var(--codsh-ui-font)!important;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] :is([class$="_title"],[class$="_cardTitle"],[class$="_cardName"],[class$="_rowName"],[class$="_name"],[class$="_amount"],[class$="_groupTitle"],[class$="_groupHead"],[class$="_presetSettingsTitle"],[class$="_heading"]) {font-weight:600!important;color:var(--codsh-title)!important;}
+html[data-codsh-theme] [data-shortcut-modal="settings"] :is([class$="_description"],[class$="_cardDescription"],[class$="_cardDesc"],[class$="_intro"],[class$="_hint"],[class$="_groupSub"],[class$="_itemDesc"]) {font-weight:400!important;color:var(--codsh-description)!important;}
+/* Unified model/effort pill and compact two-level picker. */
+:has(>[data-codsh-model-trigger][data-codsh-split-model]) {position:relative;}
+/* Keep the native floating-panel anchor measurable over the visible pill. */
+[data-codsh-model-trigger][data-codsh-split-model] {display:flex!important;position:absolute!important;inset:0!important;width:100%!important;max-width:none!important;height:100%!important;opacity:0!important;pointer-events:none!important;}
+.codsh-reasoning-trigger {height:28px;max-width:245px;padding:3px 9px;gap:4px;background:transparent;font-size:12px;line-height:20px;color:var(--codsh-text);}
+.codsh-combined-model {min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:var(--codsh-title);}
+.codsh-combined-effort {flex:none;font-weight:600;color:var(--codsh-muted);}
+.codsh-reasoning-trigger>svg {order:4;flex:none;margin-left:3px;}
+.codsh-effort-control {width:260px;padding:10px 12px 13px;border-radius:20px;background:color-mix(in srgb,var(--codsh-raised) 96%,transparent);backdrop-filter:blur(20px);}
+.codsh-effort-title {margin:0;font-size:16px;line-height:23px;}
+.codsh-effort-model {display:block;max-width:calc(100% - 48px);margin:0 auto 18px;padding:0;border:0;background:transparent;color:var(--codsh-muted);font-size:13px;line-height:20px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.codsh-effort-model:hover {color:var(--codsh-title);}
+.codsh-effort-heading {display:block;width:fit-content;min-width:120px;max-width:100%;margin:-3px auto 10px;padding:3px 10px 5px;border:0;border-radius:8px;background:transparent;text-align:center;cursor:pointer;transition:background-color var(--codsh-fast) ease;}
+.codsh-effort-heading .codsh-effort-model {max-width:100%;margin:0;}
+.codsh-effort-heading:hover .codsh-effort-model {color:var(--codsh-title);}
+.codsh-effort-heading:is(:hover,:focus-visible) {background:var(--codsh-tone-3b3b3b);}
+.codsh-effort-track {box-sizing:border-box;height:32px;padding:0;border:0;border-radius:999px;background:var(--codsh-tone-454545);}
+/* Keep fixed stops beneath the fill so covered dots disappear during dragging too. */
+.codsh-effort-ticks {position:absolute;inset:0 8px;align-items:center;justify-content:space-between;gap:0;margin:0;pointer-events:none;z-index:0;}
+.codsh-effort-ticks button {position:relative;width:16px;height:26px;padding:0;pointer-events:auto;}
+.codsh-effort-ticks button::before {content:"";display:block;width:5px;height:5px;margin:auto;border-radius:50%;background:var(--codsh-muted);opacity:.7;}
+.codsh-effort-track input {z-index:3;}
+[data-codsh-model-menu]:not([data-codsh-effort-menu]):not([data-codsh-effort-bridge]) {min-width:min(260px,calc(100vw - 32px));border-radius:20px!important;padding:8px!important;}
+[data-codsh-model-menu]:not([data-codsh-effort-menu]) [role="menuitemradio"] {min-height:34px;padding:7px 10px;border-radius:14px;font-size:14px;line-height:20px;}
+/* Wallpaper remains visible underneath the active conversation composer. */
+html[data-codsh-theme][data-codsh-background] :is([class$="_composerSeat"],[class$="_composerSeat"]::before,[class$="_composerSeat"]::after) {background:transparent!important;box-shadow:none!important;}
+html[data-codsh-theme][data-codsh-background] [data-composer-card],
+html[data-codsh-theme][data-codsh-background] [class$="_composerStack"] [class$="_card"] {background:var(--codsh-input);border-color:var(--codsh-border);}
+/* Automation is a separate native page, outside conversation/settings roots. */
+html[data-codsh-theme] [data-codsh-automation] :is([class$="_rowTitle"],[class$="_readonlyName"],[class$="_editName"],[class$="_pageHeading"] h1) {font-weight:600;color:var(--codsh-title);}
+html[data-codsh-theme][data-codsh-background] [data-codsh-automation] [class$="_detail"] {background:color-mix(in srgb,var(--codsh-raised) 88%,transparent);border-color:var(--codsh-border);backdrop-filter:blur(16px);}
+html[data-codsh-theme][data-codsh-background] [data-codsh-automation] :is([class$="_searchField"],[class$="_retentionRule"],[class$="_ruleCard"]) {background:var(--codsh-raised);border-color:var(--codsh-border);border-radius:10px;}
+html[data-codsh-theme][data-codsh-background] [data-codsh-automation] [class$="_row"] {background:color-mix(in srgb,var(--codsh-raised) 90%,transparent);border-color:var(--codsh-border);border-radius:10px;}
+html[data-codsh-theme][data-codsh-background] [data-codsh-automation] :is([class$="_selectedRow"],[class$="_row"]:hover,[class$="_filterTabActive"]) {background:var(--codsh-hover);}
+/* Plain add icon and native permission options with two-line labels. */
+html[data-codsh-theme] :is([data-composer-card],[data-composer-seat]) button:is([aria-label="添加"],[aria-label="添加文件"],[aria-label="添加附件"],[aria-label="Add"],[aria-label="Add files"],[aria-label="Add attachment"]) {background:transparent!important;box-shadow:none!important;border-color:transparent!important;}
+html[data-codsh-theme] [data-codsh-permission-trigger] [class$="_chevron"] {display:none!important;}
+html[data-codsh-theme] [data-codsh-permission-menu] {box-sizing:border-box;width:320px;min-width:0!important;max-width:calc(100vw - 24px);padding:4px!important;border:1px solid var(--codsh-border)!important;border-radius:14px!important;background:var(--codsh-raised)!important;color:var(--codsh-text);}
+html[data-codsh-theme] [data-codsh-permission-menu] :is([role="menuitem"],[role="menuitemradio"]) {min-height:44px;padding:5px 8px!important;border-radius:10px!important;gap:8px;align-items:center;}
+html[data-codsh-theme] [data-codsh-permission-description] {display:block;white-space:normal!important;font-size:13px;font-weight:650;line-height:18px;color:var(--codsh-title);}
+html[data-codsh-theme] [data-codsh-permission-description]::after {content:attr(data-codsh-permission-description);display:block;margin-top:0;font-size:11px;font-weight:400;line-height:16px;color:var(--codsh-muted);}
+html[data-codsh-theme] [data-codsh-permission-menu] button:is(:hover,:focus-visible,[aria-checked="true"]) {background:var(--codsh-hover)!important;}
+html[data-codsh-theme] [data-codsh-permission-menu] [data-codsh-full-access-option="true"],
+html[data-codsh-theme] [data-codsh-permission-menu] [data-codsh-full-access-option="true"] *,
+html[data-codsh-theme] [data-codsh-permission-menu] [data-codsh-full-access-option="true"] [data-codsh-permission-description]::after {color:#ff823d!important;}
+html[data-codsh-theme] :is([data-composer-card],[data-composer-seat]) button[class$="_add"] {background:transparent!important;box-shadow:none!important;border-color:transparent!important;}
+/* Trajectory toolbar, previews and timeline retain the active palette. */
+html[data-codsh-theme][data-codsh-background] [data-codsh-trajectory] {--dsw-alias-bg-layer-1:color-mix(in srgb,var(--codsh-raised) 88%,transparent);--dsw-alias-bg-base:var(--codsh-raised);--dsw-alias-markdown-code-block:var(--codsh-input);--dsw-alias-border-l2:var(--codsh-border);}
+html[data-codsh-theme][data-codsh-background] [data-codsh-trajectory] [data-trajectory-scroll] {background:transparent!important;}
+html[data-codsh-theme] [data-codsh-trajectory] :is([class$="_title"],[class$="_overviewTitle"]) {color:var(--codsh-title);font-weight:600;}
+/* One animated ratio keeps the fill and circular thumb synchronized. */
+@property --ratio {syntax:"<number>";inherits:true;initial-value:0;}
+.codsh-effort-track {height:24px;margin-block:4px;transition:--ratio 240ms cubic-bezier(.22,1,.36,1);}
+.codsh-effort-track[data-dragging] {transition:none;}
+html[data-codsh-theme] .codsh-effort-control .codsh-effort-thumb {top:-4px;}
+.codsh-effort-track input {inset:-4px 0;touch-action:none;}
+@media (prefers-reduced-motion:reduce) {.codsh-effort-track {transition:none;}}
