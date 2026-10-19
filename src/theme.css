@@ -94,6 +94,10 @@ html[data-codsh-theme] [class$="_body"]:has([data-composer-seat]) {
 .codsh-rail-button svg {width:20px;height:20px;flex:none;}
 .codsh-rail-button:hover {background:var(--codsh-tone-34353c);color:var(--codsh-tone-eee);}
 .codsh-rail-tools button[aria-pressed="true"] {background:var(--codsh-tone-34353c);color:var(--codsh-tone-eee);}
+/* macOS: drop the rail below the native hiddenInset traffic lights; the host
+   reserves a 48px top band for them, and the panel list follows to keep the gap. */
+[data-platform="darwin"] .codsh-rail-tools {top:48px;}
+[data-platform="darwin"] [data-codsh-sidebar] [class$="_panelList"] {top:183px;}
 [data-codsh-sidebar][data-codsh-view="recent"] [data-codsh-workspaces]>[class$="_sectionHeader"],
 [data-codsh-sidebar][data-codsh-view="recent"] [data-codsh-workspaces]>[class$="_listArea"],
 [data-codsh-sidebar][data-codsh-view="projects"] .codsh-recent {display:none!important;}
