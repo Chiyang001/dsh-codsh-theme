@@ -1,6 +1,6 @@
 {
   "name": "dsh-codsh-theme",
-  "version": "0.3.53",
+  "version": "0.3.56",
   "description": "Codex-inspired full interface skin for DeepSeek Harness, with the DeepSeek welcome mark",
   "type": "module",
   "main": "index.js",

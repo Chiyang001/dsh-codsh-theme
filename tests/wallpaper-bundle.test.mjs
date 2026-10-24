@@ -5,18 +5,23 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
 import {wallpaperDirectory, ensureWallpaperCompatibility} from '../compat/wallpaper-install.js';
-import {compatibilityMarker} from '../scripts/wallpaper-engine-compat.mjs';
+import {compatibilityMarker, systemFontsMarker} from '../scripts/wallpaper-engine-compat.mjs';
 
 const upstreamPath=join(wallpaperDirectory(),'lib/client.js');
 let original;
 try {original=await readFile(upstreamPath+'.codsh-original','utf8');}
 catch {original=await readFile(upstreamPath,'utf8');}
+const fontsPath=join(wallpaperDirectory(),'lib/routes/system-fonts.js');
+let originalFonts;
+try {originalFonts=await readFile(fontsPath+'.codsh-original','utf8');}
+catch {originalFonts=await readFile(fontsPath,'utf8');}
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
 
 async function writeEngine(directory, version='1.3.3') {
-  await mkdir(join(directory,'lib'),{recursive:true});
+  await mkdir(join(directory,'lib/routes'),{recursive:true});
   await writeFile(join(directory,'package.json'),JSON.stringify({name:'dsh-plugin-wallpaper-engine',version,exports:{'./package.json':'./package.json'}}));
   await writeFile(join(directory,'lib/client.js'),original);
+  await writeFile(join(directory,'lib/routes/system-fonts.js'),originalFonts);
 }
 
 test('Codsh declares the pinned wallpaper dependency and its host activation row',async()=>{
@@ -54,10 +59,12 @@ test('a relocated package patches its bundled dependency, refreshes an existing 
     await plugin.apply(ctx);
     assert.ok((await readFile(join(bundled,'lib/client.js'),'utf8')).includes(compatibilityMarker));
     assert.equal(await readFile(join(bundled,'lib/client.js.codsh-original'),'utf8'),original);
+    assert.ok((await readFile(join(bundled,'lib/routes/system-fonts.js'),'utf8')).includes(systemFontsMarker));
     active=join(standalone,'lib/client.js');
     for(const listener of listeners)listener();
     for(let i=0;i<8&&!rebuilt.length;i++)await new Promise(resolve=>setTimeout(resolve,20));
     assert.ok((await readFile(active,'utf8')).includes(compatibilityMarker));
+    assert.ok((await readFile(join(standalone,'lib/routes/system-fonts.js'),'utf8')).includes(systemFontsMarker));
     assert.deepEqual(rebuilt,['dsh-plugin-wallpaper-engine']);
     assert.deepEqual(errors,[]);
     const before=await readFile(active,'utf8');

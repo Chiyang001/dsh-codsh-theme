@@ -29,8 +29,8 @@ function createBackgrounds(ctx,mark) {
     const rect=modeOwner.mode.getBoundingClientRect(),viewport=window.visualViewport;
     const left=viewport?.offsetLeft||0,top=viewport?.offsetTop||0;
     const width=viewport?.width||window.innerWidth,height=viewport?.height||window.innerHeight;
-    modePopup.style.width=`${Math.min(Math.max(rect.width,144),Math.max(0,width-16))}px`;
-    modePopup.style.maxHeight=`${Math.max(0,height-16)}px`;
+    modePopup.style.width=`${Math.min(Math.max(rect.width,modeOwner.searchable?280:144),Math.max(0,width-16))}px`;
+    modePopup.style.maxHeight=`${Math.max(0,Math.min(modeOwner.searchable?360:height,height-16))}px`;
     const popupWidth=modePopup.offsetWidth||parseFloat(modePopup.style.width),popupHeight=modePopup.offsetHeight||Math.min(110,Math.max(0,height-16));
     modePopup.style.left=`${Math.max(left+8,Math.min(rect.right-popupWidth,left+width-popupWidth-8))}px`;
     const y=rect.bottom+6+popupHeight>top+height-8?rect.top-popupHeight-6:rect.bottom+6;
@@ -38,42 +38,84 @@ function createBackgrounds(ctx,mark) {
   }
   function updateMode(view,value){
     if(view.mode.value!==value)view.mode.value=value;
-    const label=modes.find(([id])=>id===value)?.[1]||'跟随系统';
+    const label=(view.choices||modes).find(([id])=>id===value)?.[1]||'跟随系统';
     if(view.modeLabel.textContent!==label)view.modeLabel.textContent=label;
-    view.mode.setAttribute('aria-label',`明暗模式：${label}`);
-    if(modeOwner===view)for(const option of modePopup.children){
+    view.mode.setAttribute('aria-label',`${view.label||'明暗模式'}：${label}`);
+    if(modeOwner===view)for(const option of modePopup.querySelectorAll('[role="menuitemradio"]')){
       const checked=String(option.value===value);
       if(option.getAttribute('aria-checked')!==checked)option.setAttribute('aria-checked',checked);
     }
+  }
+  function filterChoices(event){
+    const query=(modePopup.querySelector('input')?.value||'').trim().toLocaleLowerCase();
+    let visible=0;
+    for(const option of modePopup.querySelectorAll('[role="menuitemradio"]')){
+      const hidden=!`${option.textContent} ${option.value}`.toLocaleLowerCase().includes(query);
+      if(option.hidden!==hidden)option.hidden=hidden;
+      if(!hidden)visible++;
+    }
+    const empty=modePopup.querySelector('.codsh-font-empty');if(empty)empty.hidden=visible>0;
+    if(event?.type==='input')modePopup.querySelector('.codsh-font-options').scrollTop=0;
+    positionMode();
+  }
+  function renderChoices(view){
+    const list=modePopup.querySelector('.codsh-font-options')||modePopup;
+    const focused=document.activeElement,focusedValue=list.contains(focused)?focused.value:undefined;
+    list.replaceChildren();
+    for(const [id,label] of view.choices||modes){
+      const option=document.createElement('button');option.type='button';option.value=id;option.tabIndex=-1;
+      option.setAttribute('role','menuitemradio');option.setAttribute('aria-checked',String(id===view.mode.value));
+      option.innerHTML='<span></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-8"/></svg>';
+      option.firstElementChild.textContent=label;
+      option.onclick=()=>{try{if(view.choose){if(view.choose(id)===false)return;}else{ctx.theme.setTheme(id);view.status.textContent='';}updateMode(view,id);closeMode(true);}catch(error){view.status.textContent=error.message;}};
+      list.append(option);
+    }
+    if(view.searchable)filterChoices();
+    if(focusedValue!==undefined)(Array.from(list.children).find(option=>option.value===focusedValue&&!option.hidden)||modePopup.querySelector('input'))?.focus();
   }
   function openMode(view,edge){
     closeMode();modeOwner=view;
     modePopup=document.createElement('div');modePopup.className='codsh-appearance-menu';
     modePopup.id=`codsh-appearance-menu-${++popupSequence}`;
-    modePopup.setAttribute('role','menu');modePopup.setAttribute('aria-label','明暗模式');modePopup.dataset.codshSurface='menu';
+    modePopup.setAttribute('role',view.searchable?'dialog':'menu');modePopup.setAttribute('aria-label',view.label||'明暗模式');modePopup.dataset.codshSurface='menu';
     view.mode.setAttribute('aria-controls',modePopup.id);view.mode.setAttribute('aria-expanded','true');
-    for(const [id,label] of modes){
-      const option=document.createElement('button');option.type='button';option.value=id;option.tabIndex=-1;
-      option.setAttribute('role','menuitemradio');option.setAttribute('aria-checked',String(id===view.mode.value));
-      option.innerHTML='<span></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-8"/></svg>';
-      option.firstElementChild.textContent=label;
-      option.onclick=()=>{try{ctx.theme.setTheme(id);updateMode(view,id);view.status.textContent='';closeMode(true);}catch(error){view.status.textContent=error.message;}};
-      modePopup.append(option);
+    if(view.searchable){
+      modePopup.classList.add('codsh-font-menu');
+      const search=document.createElement('input');search.type='search';search.className='codsh-font-search';search.placeholder='搜索中文或英文字体名称…';search.setAttribute('aria-label','搜索字体');search.oninput=filterChoices;
+      const list=document.createElement('div');list.className='codsh-font-options';list.id=modePopup.id+'-options';list.setAttribute('role','menu');list.setAttribute('aria-label','字体选项');search.setAttribute('aria-controls',list.id);
+      const empty=document.createElement('p');empty.className='codsh-font-empty';empty.textContent='没有匹配的字体';empty.setAttribute('role','status');empty.hidden=true;
+      modePopup.append(search,list,empty);
     }
+    renderChoices(view);
     document.body.append(modePopup);positionMode();
-    const options=Array.from(modePopup.children);
-    (edge==='first'?options[0]:edge==='last'?options.at(-1):options.find(option=>option.value===view.mode.value)||options[0]).focus();
+    const options=Array.from(modePopup.querySelectorAll('[role="menuitemradio"]'));
+    (edge==='first'?options[0]:edge==='last'?options.at(-1):view.searchable?modePopup.querySelector('input'):options.find(option=>option.value===view.mode.value)||options[0])?.focus();
+    if(!edge)options.find(option=>option.value===view.mode.value)?.scrollIntoView?.({block:'nearest'});
+    view.onOpen?.();
   }
+  function createDropdown(label,choices,choose,status,settings={}){
+    const mode=document.createElement('button');mode.type='button';mode.className='codsh-appearance-trigger';
+    mode.setAttribute('aria-haspopup',settings.searchable?'dialog':'menu');mode.setAttribute('aria-expanded','false');
+    mode.innerHTML='<span></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 8 5 5 5-5"/></svg>';
+    const view={...settings,mode,modeLabel:mode.firstElementChild,label,choices,choose,status,update:value=>updateMode(view,value),setChoices(next){view.choices=next;updateMode(view,mode.value);if(modeOwner===view){renderChoices(view);positionMode();}}};
+    mode.onclick=()=>modeOwner===view?closeMode(true):openMode(view);
+    mode.onkeydown=event=>{if(['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();openMode(view,event.key==='ArrowDown'?'first':'last');}};
+    return view;
+  }
+  const typography=createTypography(createDropdown);
   const outsideMode=event=>{if(modePopup&&!modePopup.contains(event.target)&&!modeOwner.mode.contains(event.target))closeMode();};
   const modeKeyboard=event=>{
-    if(!modePopup)return;
+    if(!modePopup||event.isComposing)return;
     if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeMode(true);return;}
     if(event.key==='Tab'){closeMode(true);return;}
-    if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+    const searching=event.target===modePopup.querySelector('input');
+    const options=Array.from(modePopup.querySelectorAll('[role="menuitemradio"]')).filter(option=>!option.hidden);
+    if(searching&&event.key==='Enter'){event.preventDefault();event.stopPropagation();options[0]?.click();return;}
+    if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key)||searching&&['Home','End'].includes(event.key))return;
     event.preventDefault();event.stopPropagation();
-    const options=Array.from(modePopup.children),current=options.indexOf(document.activeElement);
-    const next=event.key==='Home'?0:event.key==='End'?options.length-1:(current+(event.key==='ArrowDown'?1:-1)+options.length)%options.length;
-    options[next].focus();
+    const current=options.indexOf(document.activeElement);
+    const next=event.key==='Home'?0:event.key==='End'?options.length-1:current<0?(event.key==='ArrowDown'?0:options.length-1):(current+(event.key==='ArrowDown'?1:-1)+options.length)%options.length;
+    options[next]?.focus();options[next]?.scrollIntoView?.({block:'nearest'});
   };
   const modeScroll=event=>{if(modePopup&&!modePopup.contains(event.target))closeMode();};
   document.addEventListener('pointerdown',outsideMode,true);
@@ -130,25 +172,23 @@ html[data-codsh-theme][data-codsh-palette] body:not([data-ds-dark-theme]){${pale
   imageStore().then(value=>{if(disposed||custom)return;custom=typeof value==='string'&&/^data:image\/(png|jpeg|webp|gif);base64,/.test(value)?value:'';if(initialRevision===revision)paint();}).catch(()=>{});
   paint();
   function refresh(){
+    typography.refresh();
     const external=wallpaperActive();
     if(external!==externalBackground){externalBackground=external;paint();}
     document.querySelectorAll('[data-trajectory-scroll]').forEach(scroll=>mark(scroll.closest(local('root')),'data-codsh-trajectory'));
     document.querySelectorAll(local('page')).forEach(page=>{
       if(page.querySelector(local('pageHeading'))&&page.querySelector(local('filterTab')))mark(page,'data-codsh-automation');
     });
-    for(const [row,view] of views)if(!row.isConnected){if(modeOwner===view)closeMode();view.box.remove();views.delete(row);}
+    for(const [row,view] of views)if(!row.isConnected){if(modeOwner&&view.box.contains(modeOwner.mode))closeMode();view.box.remove();views.delete(row);}
     document.querySelectorAll('[data-shortcut-modal="settings"] [class$="_cubeRow"],[data-shortcut-modal="settings"] [class*="_cubeRow "]').forEach(row=>{
       mark(row,'data-codsh-native-appearance');
       let view=views.get(row);
       if(!view){
         const box=document.createElement('div');box.className='codsh-appearance';
+        const status=document.createElement('p');status.className='codsh-background-status';status.setAttribute('role','status');
         const line=document.createElement('div');line.className='codsh-appearance-mode';line.append('明暗模式');
-        const mode=document.createElement('button');mode.type='button';mode.className='codsh-appearance-trigger';
-        mode.setAttribute('aria-haspopup','menu');mode.setAttribute('aria-expanded','false');
-        mode.innerHTML='<span></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 8 5 5 5-5"/></svg>';
-        const modeLabel=mode.firstElementChild;
-        mode.onclick=()=>modeOwner===view?closeMode(true):openMode(view);
-        mode.onkeydown=event=>{if(['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();openMode(view,event.key==='ArrowDown'?'first':'last');}};
+        view=createDropdown('明暗模式',modes,id=>{ctx.theme.setTheme(id);status.textContent='';},status);
+        const {mode}=view;
         line.append(mode);
         const title=document.createElement('h3');title.textContent='背景主题';
         const hint=document.createElement('p');hint.className='codsh-background-hint';
@@ -163,7 +203,6 @@ html[data-codsh-theme][data-codsh-palette] body:not([data-ds-dark-theme]){${pale
         }
         const upload=document.createElement('input');upload.type='file';upload.accept='image/png,image/jpeg,image/webp,image/gif';upload.hidden=true;
         const change=document.createElement('button');change.type='button';change.className='codsh-background-upload';change.textContent='选择自定义背景图片';change.onclick=()=>upload.click();
-        const status=document.createElement('p');status.className='codsh-background-status';status.setAttribute('role','status');
         upload.onchange=async()=>{
           const file=upload.files?.[0];if(!file)return;
           change.disabled=true;
@@ -177,7 +216,7 @@ html[data-codsh-theme][data-codsh-palette] body:not([data-ds-dark-theme]){${pale
             await imageStore(data);if(disposed)return;custom=data;choose('custom');status.textContent='已保存到本机';
           }catch(error){if(!disposed)status.textContent=error.message;}finally{change.disabled=false;upload.value='';}
         };
-        box.append(line,title,hint,grid,change,upload,status);row.after(box);view={box,mode,modeLabel,grid,hint,status};views.set(row,view);paint();
+        box.append(line,typography.mount(),title,hint,grid,change,upload,status);row.after(box);Object.assign(view,{box,grid,hint});views.set(row,view);paint();
       }
       if(view.box.previousElementSibling!==row)row.after(view.box);
       const preference=ctx.theme.getTheme?.().preference;
@@ -185,5 +224,5 @@ html[data-codsh-theme][data-codsh-palette] body:not([data-ds-dark-theme]){${pale
       updateMode(view,preference||['light','dark','system'][buttons.findIndex(button=>button.getAttribute('aria-pressed')==='true')]||'system');
     });
   }
-  return {refresh,dispose(){disposed=true;closeMode();document.removeEventListener('pointerdown',outsideMode,true);document.removeEventListener('keydown',modeKeyboard,true);document.removeEventListener('scroll',modeScroll,true);window.removeEventListener('resize',positionMode);window.visualViewport?.removeEventListener('resize',positionMode);window.visualViewport?.removeEventListener('scroll',positionMode);if(customUrl.startsWith('blob:'))URL.revokeObjectURL(customUrl);for(const view of views.values())view.box.remove();views.clear();sheet.remove();layer.remove();document.documentElement.removeAttribute('data-codsh-background');document.documentElement.removeAttribute('data-codsh-palette');document.documentElement.removeAttribute('data-codsh-background-source');}};
+  return {refresh,dispose(){disposed=true;closeMode();typography.dispose();document.removeEventListener('pointerdown',outsideMode,true);document.removeEventListener('keydown',modeKeyboard,true);document.removeEventListener('scroll',modeScroll,true);window.removeEventListener('resize',positionMode);window.visualViewport?.removeEventListener('resize',positionMode);window.visualViewport?.removeEventListener('scroll',positionMode);if(customUrl.startsWith('blob:'))URL.revokeObjectURL(customUrl);for(const view of views.values())view.box.remove();views.clear();sheet.remove();layer.remove();document.documentElement.removeAttribute('data-codsh-background');document.documentElement.removeAttribute('data-codsh-palette');document.documentElement.removeAttribute('data-codsh-background-source');}};
 }

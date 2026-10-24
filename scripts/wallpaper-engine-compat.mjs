@@ -1,6 +1,20 @@
 import {readFile} from 'node:fs/promises';
 
 export const compatibilityMarker = '/* Codsh Wallpaper Engine compatibility v1 */';
+export const systemFontsMarker = '/* Codsh system fonts UTF-8 v1 */';
+
+/** PowerShell pipes otherwise use the Windows code page while the reader decodes UTF-8. */
+export function patchSystemFonts(source) {
+  if (source.includes(systemFontsMarker)) return source;
+  for (const [needle, replacement] of [
+    ['const SYSTEM_FONTS_CACHE_VERSION = 2;', `${systemFontsMarker}\nconst SYSTEM_FONTS_CACHE_VERSION = 3;`],
+    ["'Add-Type -AssemblyName System.Drawing; '", "'[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Add-Type -AssemblyName System.Drawing; '"],
+  ]) {
+    if (source.split(needle).length !== 2) throw Error('Wallpaper Engine 1.3.3 本机字体接口不匹配，未修改文件');
+    source = source.replace(needle, replacement);
+  }
+  return source;
+}
 
 // Version-specific edits fail before writing when the upstream bundle changes.
 export async function patchWallpaperEngine(source) {

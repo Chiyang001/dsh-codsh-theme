@@ -4,11 +4,13 @@ import assert from 'node:assert/strict';
 import {JSDOM} from 'jsdom';
 
 const bundle = await readFile(new URL('../dist/client.js',import.meta.url),'utf8');
+const typographySource=await readFile(new URL('../src/typography.js',import.meta.url),'utf8');
 const fixture = `<div class="abc_root abc_quietBars"><div class="abc_logoRow"></div><button class="abc_newSession">新会话</button><nav class="abc_panelList"><button class="abc_panelRow" aria-label="插件"><span class="abc_panelGlyph"><svg></svg></span><span class="abc_panelTitle abc_wide">插件</span></button></nav><div class="abc_regionArea"><div class="workspace_root"><div class="workspace_sectionHeader"><span class="workspace_sectionLabel workspace_wide">工作区</span><button aria-label="添加工作区">+</button></div><div class="workspace_listArea"><div data-row-key="workspace:project">项目</div></div></div></div></div>
 <section data-phase="hero"><div data-composer-seat><div class="Dc7zOa_composerStack Dc7zOa_composerHero"><div class="Hqq-bq_root"><div class="Hqq-bq_stack"><div class="Hqq-bq_headline"><span class="Hqq-bq_fishHitbox"><svg data-native-whale></svg></span><span class="Hqq-bq_titleGroup"><span>探索未至之境</span><span>预览版</span></span></div></div></div><div class="Dc7zOa_heroWorkspaceRow"><button><span class="Hqq-bq_workspaceLabel">Codsh</span></button></div><div class="input_card"><div contenteditable="true">草稿</div><button>发送</button></div></div></div></section>`;
-function setup() {
+function setup(initialize) {
   const dom = new JSDOM(fixture,{runScripts:'outside-only',url:'http://localhost'});
   let plugin,dispose,tokenDispose = 0,tokens;
+  initialize?.(dom.window);
   dom.window.__ModuleLoader__ = {load(entry){assert.equal(entry.id,'dsh-codsh-theme');plugin=entry.factory(() => {});}};
   dom.window.eval(bundle);
   assert.deepEqual(Array.from(plugin.inject ?? []),['theme','sessions','workspaces','uiWorkspace','remote','remote.session']);
@@ -69,7 +71,7 @@ test('Codsh alone owns backgrounds while Wallpaper Engine supplies glass',async(
   assert.equal(d.querySelector('.codsh-wallpaper-layer'),null);
   const source=await readFile(new URL('../src/backgrounds.js',import.meta.url),'utf8');
   w.localStorage.setItem('codsh.background.source','wallpaper');
-  w.eval('const BACKGROUND_PRESETS=[{id:"sakura",url:"data:image/webp;base64,AAAA"}];'+source+';window.backgroundTest=createBackgrounds({theme:{}},()=>{});');
+  w.eval('const BACKGROUND_PRESETS=[{id:"sakura",url:"data:image/webp;base64,AAAA"}];'+typographySource+source+';window.backgroundTest=createBackgrounds({theme:{}},()=>{});');
   assert.equal(d.documentElement.getAttribute('data-codsh-background-source'),'codsh','legacy wallpaper-source preferences cannot reactivate the conflicting source');
   assert.ok(d.documentElement.hasAttribute('data-codsh-palette'));
   assert.match(d.querySelector('style[data-codsh-background]').textContent,/--codsh-background-image:url/);
@@ -262,6 +264,154 @@ test('appearance dropdown shares menu styling, supports keyboard navigation and 
   w.close();
 });
 
+test('font choices and custom families persist, survive settings remounts and restore on disable',async()=>{
+  const env=setup(),d=env.document,w=env.dom.window;
+  const mount=()=>d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="theme_cubeRow"></div></div>');
+  mount();await settle();
+  const choose=id=>{d.querySelector('.codsh-font-trigger').click();d.querySelector(`.codsh-appearance-menu [value="${id}"]`).click();};
+  choose('KaiTi');await settle();
+  assert.equal(d.querySelector('.codsh-font-trigger').textContent,'楷体');
+  assert.equal(d.documentElement.hasAttribute('data-codsh-font'),true);
+  assert.match(d.querySelector('[data-codsh-typography]').textContent,/--codsh-ui-font:"KaiTi",var\(--codsh-default-ui-font\)!important/);
+  assert.equal(JSON.parse(w.localStorage.getItem('codsh.typography')).font,'KaiTi');
+  choose('custom');
+  const custom=d.querySelector('.codsh-font-custom'),input=custom.querySelector('input');
+  assert.equal(custom.hidden,false);
+  input.value='任意字体; color:red';custom.querySelector('button').click();await settle();
+  assert.equal(input.getAttribute('aria-invalid'),'true');assert.doesNotMatch(d.querySelector('[data-codsh-typography]').textContent,/color:red/);
+  input.focus();input.value='霞鹜文楷';input.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await settle();
+  assert.match(d.querySelector('[data-codsh-typography]').textContent,/"霞鹜文楷"/);
+  const stored=w.localStorage.getItem('codsh.typography');
+  d.querySelector('[data-shortcut-modal="settings"]').remove();await settle();
+  mount();await settle();
+  assert.equal(d.querySelectorAll('.codsh-typography').length,1);
+  assert.equal(d.querySelector('.codsh-font-custom input').value,'霞鹜文楷');
+  assert.equal(d.querySelector('.codsh-font-trigger').textContent,'自定义字体');
+  env.dispose();assert.equal(d.querySelector('[data-codsh-typography]'),null);assert.equal(d.documentElement.hasAttribute('data-codsh-font'),false);w.close();
+  const restored=setup(window=>window.localStorage.setItem('codsh.typography',stored));
+  restored.document.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="theme_cubeRow"></div></div>');await settle();
+  assert.match(restored.document.querySelector('[data-codsh-typography]').textContent,/"霞鹜文楷"/);
+  restored.document.querySelector('.codsh-typography-reset').click();await settle();
+  assert.equal(restored.dom.window.localStorage.getItem('codsh.typography'),null);
+  assert.equal(restored.document.querySelector('[data-codsh-typography]').textContent,'');
+  assert.equal(restored.document.querySelector('.codsh-font-trigger').textContent,'默认字体');
+  restored.dispose();restored.dom.window.close();
+});
+
+test('expanded font choices support name search, empty results and keyboard selection in the shared popup',async()=>{
+  const env=setup(),d=env.document,w=env.dom.window;
+  d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="theme_cubeRow"></div></div>');await settle();
+  const trigger=d.querySelector('.codsh-font-trigger');trigger.click();
+  const menu=d.querySelector('.codsh-font-menu'),search=menu.querySelector('input');
+  const options=()=>Array.from(menu.querySelectorAll('[role="menuitemradio"]')).filter(option=>!option.hidden);
+  const filter=value=>{search.value=value;search.dispatchEvent(new w.Event('input',{bubbles:true}));};
+  const key=value=>d.activeElement.dispatchEvent(new w.KeyboardEvent('keydown',{key:value,bubbles:true,cancelable:true}));
+  assert.equal(menu.querySelectorAll('[role="menuitemradio"]').length,54);
+  assert.equal(d.activeElement,search);assert.equal(menu.dataset.codshSurface,'menu');assert.equal(menu.style.maxHeight,'360px');
+  assert.equal(w.getComputedStyle(menu).borderRadius,'14px');
+  menu.querySelector('.codsh-font-options').scrollTop=180;
+  filter('  wenkai  ');assert.deepEqual(options().map(option=>option.value),['LXGW WenKai','LXGW WenKai Screen']);
+  assert.equal(menu.querySelector('.codsh-font-options').scrollTop,0,'a new search starts at the top of its results');
+  assert.equal(key('Home'),true,'Home edits the search field instead of navigating options');assert.equal(d.activeElement,search);
+  key('ArrowUp');assert.equal(d.activeElement.value,'LXGW WenKai Screen');key('ArrowDown');assert.equal(d.activeElement.value,'LXGW WenKai');
+  search.focus();filter('不存在的字体 123');assert.equal(options().length,0);assert.equal(menu.querySelector('.codsh-font-empty').hidden,false);
+  assert.equal(w.getComputedStyle(menu.querySelector('[value="SimSun"]')).display,'none');
+  key('ArrowDown');assert.equal(d.activeElement,search);key('Escape');assert.equal(menu.isConnected,false);assert.equal(d.activeElement,trigger);
+  trigger.click();const nextSearch=d.querySelector('.codsh-font-search');nextSearch.value='思源宋体';nextSearch.dispatchEvent(new w.Event('input',{bubbles:true}));key('Enter');await settle();
+  assert.equal(JSON.parse(w.localStorage.getItem('codsh.typography')).font,'Source Han Serif SC');
+  assert.equal(d.querySelector('.codsh-font-menu'),null);assert.equal(d.activeElement,trigger);
+  env.dispose();w.close();
+});
+
+test('installed fonts load lazily, merge safely without losing search, and persist even while the host is offline',async()=>{
+  let resolveFonts;const calls=[];
+  const env=setup(window=>{window.fetch=(url,options)=>{calls.push({url,options});return new Promise(resolve=>{resolveFonts=resolve;});};});
+  const d=env.document,w=env.dom.window;
+  const mount=()=>d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="theme_cubeRow"></div></div>');
+  mount();await settle();assert.equal(calls.length,0,'scanning does not run at startup or settings mount');
+  d.querySelector('.codsh-font-trigger').click();assert.equal(calls.length,1);assert.equal(calls[0].url,'/wallpaper-engine/system-fonts');assert.equal(calls[0].options.cache,'no-store');
+  assert.equal(d.querySelector('.codsh-font-scan button').disabled,true);
+  const search=d.querySelector('.codsh-font-search');search.value='Acme';search.dispatchEvent(new w.Event('input',{bubbles:true}));
+  resolveFonts({ok:true,json:async()=>({ok:true,fonts:['Acme 中文','SimSun','Acme 中文','.private','x";}body{color:red}','坏\ufffd字体','',null,'default','custom']})});await settle();await settle();
+  const menu=d.querySelector('.codsh-font-menu');assert.equal(d.activeElement,search);assert.equal(search.value,'Acme');
+  assert.equal(menu.querySelectorAll('[value="SimSun"]').length,1);assert.equal(menu.querySelectorAll('[value^="sys:"]').length,1);
+  assert.match(d.querySelector('.codsh-font-scan-status').textContent,/已读取 2 种/);
+  const installed=menu.querySelector('[value="sys:Acme 中文"]');assert.equal(installed.hidden,false);installed.click();await settle();
+  assert.match(d.querySelector('[data-codsh-typography]').textContent,/--codsh-ui-font:"Acme 中文"/);
+  const saved=w.localStorage.getItem('codsh.typography');assert.equal(JSON.parse(saved).font,'sys:Acme 中文');
+  d.querySelector('.codsh-font-trigger').click();assert.equal(calls.length,1,'reopening uses the loaded list');
+  d.body.dispatchEvent(new w.Event('pointerdown',{bubbles:true}));
+  w.fetch=async()=>({ok:true,json:async()=>({ok:true,fonts:[]})});
+  d.querySelector('.codsh-font-scan button').click();await settle();await settle();
+  assert.match(d.querySelector('.codsh-font-scan-status').textContent,/暂时无法读取/);
+  d.querySelector('[data-shortcut-modal="settings"]').remove();await settle();mount();await settle();
+  d.querySelector('.codsh-font-trigger').click();assert.ok(d.querySelector('.codsh-font-menu [value="sys:Acme 中文"]'),'a failed refresh retains the last successful list');
+  env.dispose();w.close();
+  const restored=setup(window=>{window.localStorage.setItem('codsh.typography',saved);window.fetch=async()=>{throw Error('offline');};});
+  const rd=restored.document;
+  assert.match(rd.querySelector('[data-codsh-typography]').textContent,/--codsh-ui-font:"Acme 中文"/,'the selected font applies before any scan');
+  rd.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="theme_cubeRow"></div></div>');await settle();
+  assert.equal(rd.querySelector('.codsh-font-trigger').textContent,'Acme 中文');rd.querySelector('.codsh-font-trigger').click();await settle();
+  assert.equal(rd.querySelector('.codsh-font-menu [value="sys:Acme 中文"]').getAttribute('aria-checked'),'true');
+  assert.match(rd.querySelector('.codsh-font-scan-status').textContent,/暂时无法读取/);
+  rd.querySelector('.codsh-typography-reset').click();await settle();assert.equal(rd.querySelector('[data-codsh-typography]').textContent,'');
+  restored.dispose();restored.dom.window.close();
+});
+
+test('a pending font scan is shared and aborted when the plugin is disabled',async()=>{
+  let signal,finish;let requests=0;
+  const env=setup(window=>{window.fetch=(_url,options)=>{requests++;signal=options.signal;return new Promise(resolve=>{finish=resolve;});};});
+  const d=env.document,w=env.dom.window;
+  d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="theme_cubeRow"></div></div>');await settle();
+  const trigger=d.querySelector('.codsh-font-trigger');trigger.click();trigger.click();trigger.click();
+  assert.equal(requests,1);assert.equal(signal.aborted,false);
+  env.dispose();assert.equal(signal.aborted,true);
+  finish({ok:true,json:async()=>({ok:true,fonts:['Acme Late']})});await settle();
+  assert.equal(d.querySelector('[data-codsh-typography]'),null);assert.equal(d.querySelector('.codsh-font-menu'),null);assert.equal(d.querySelector('.codsh-typography'),null);
+  w.close();
+});
+
+test('independent light and dark text colors preserve semantic colors and code fonts',async()=>{
+  const env=setup(),d=env.document,w=env.dom.window;
+  d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="theme_cubeRow"></div></div><pre style="font-family:monospace"><code><span id="syntax-token" style="color:rgb(140, 60, 160)">const</span></code></pre><span id="state-text" style="color:rgb(210, 20, 20)">错误</span>');
+  await settle();
+  const light=d.querySelector('[aria-label="浅色模式字体颜色"]'),dark=d.querySelector('[aria-label="深色模式字体颜色 HEX"]');
+  light.value='#225588';light.dispatchEvent(new w.Event('input',{bubbles:true}));await settle();
+  assert.equal(w.getComputedStyle(d.body).getPropertyValue('--codsh-text'),'#225588');
+  assert.equal(w.getComputedStyle(d.body).getPropertyValue('--codsh-description'),'#225588cc');
+  assert.equal(d.documentElement.hasAttribute('data-codsh-text-color'),true);
+  dark.focus();dark.value='invalid';dark.dispatchEvent(new w.Event('change',{bubbles:true}));await settle();
+  assert.equal(dark.getAttribute('aria-invalid'),'true');
+  dark.value='#cde';dark.dispatchEvent(new w.Event('change',{bubbles:true}));await settle();
+  assert.equal(JSON.parse(w.localStorage.getItem('codsh.typography')).dark,'#ccddee');
+  d.body.setAttribute('data-ds-dark-theme','');await settle();
+  assert.equal(w.getComputedStyle(d.body).getPropertyValue('--codsh-text'),'#ccddee');
+  const sheet=d.querySelector('[data-codsh-typography]');
+  assert.ok(Array.from(sheet.sheet.cssRules).filter(rule=>d.body.matches(rule.selectorText)).every(rule=>rule.style.getPropertyPriority('--dsw-alias-label-primary')==='important'));
+  assert.equal(w.getComputedStyle(d.querySelector('#syntax-token')).color,'rgb(140, 60, 160)');
+  assert.equal(w.getComputedStyle(d.querySelector('#state-text')).color,'rgb(210, 20, 20)');
+  assert.equal(w.getComputedStyle(d.querySelector('pre')).fontFamily,'monospace');
+  d.querySelector('[aria-label="深色模式字体颜色跟随主题"]').click();await settle();
+  assert.equal(d.documentElement.hasAttribute('data-codsh-text-color'),false,'reset affects only the active color mode');
+  assert.equal(JSON.parse(w.localStorage.getItem('codsh.typography')).light,'#225588');
+  d.body.removeAttribute('data-ds-dark-theme');await settle();
+  assert.equal(w.getComputedStyle(d.body).getPropertyValue('--codsh-text'),'#225588');
+  env.dispose();assert.equal(d.documentElement.hasAttribute('data-codsh-text-color'),false);w.close();
+});
+
+test('invalid stored typography and storage failures leave the default appearance usable',async()=>{
+  const env=setup(window=>window.localStorage.setItem('codsh.typography',JSON.stringify({font:'custom',customFamily:'x";}body{color:red}',light:'#bad-data',dark:'url(fake)'})));
+  const d=env.document,w=env.dom.window;
+  d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="theme_cubeRow"></div></div>');await settle();
+  assert.equal(d.querySelector('[data-codsh-typography]').textContent,'');
+  assert.equal(d.documentElement.hasAttribute('data-codsh-font'),false);
+  w.Storage.prototype.setItem=()=>{throw Error('本机存储不可用');};
+  d.querySelector('.codsh-font-trigger').click();d.querySelector('.codsh-appearance-menu [value="SimSun"]').click();await settle();
+  assert.equal(d.querySelector('.codsh-typography-status').textContent,'本机存储不可用');
+  assert.equal(d.querySelector('[data-codsh-typography]').textContent,'');
+  env.dispose();w.close();
+});
+
 test('custom background is validated, stored locally and restored on a fresh activation',async()=>{
   const env=setup(),w=env.dom.window,d=env.document;let stored;
   const revoked=[];let blobCount=0;
@@ -287,7 +437,7 @@ test('custom background is validated, stored locally and restored on a fresh act
   // Re-run the real background controller against the same device store.
   d.documentElement.setAttribute('data-codsh-theme','');
   const source=await readFile(new URL('../src/backgrounds.js',import.meta.url),'utf8');
-  w.eval('const BACKGROUND_PRESETS=[];'+source+';window.backgroundTest=createBackgrounds({theme:{}},()=>{});');
+  w.eval('const BACKGROUND_PRESETS=[];'+typographySource+source+';window.backgroundTest=createBackgrounds({theme:{}},()=>{});');
   for(let i=0;i<6;i++)await settle();
   assert.ok(d.documentElement.hasAttribute('data-codsh-background'));assert.equal(w.getComputedStyle(d.body).getPropertyValue('--codsh-sidebar'),themeBeforeUpload);w.backgroundTest.dispose();assert.equal(d.documentElement.hasAttribute('data-codsh-background'),false);w.close();
 });
