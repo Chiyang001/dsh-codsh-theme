@@ -100,7 +100,8 @@ npx @deepseek-ai/dsh web
 - 与 `dsh-plugin-wallpaper-engine` 同时使用时，背景统一在 **通用设置 → 外观** 中选择，不再提供切回外部壁纸的入口。兼容补丁隐藏对方侧栏和设置中的壁纸库、播放与音频入口，暂停壁纸播放和轮播；外观仅保留玻璃调节，挂件、会话头像与鼠标点击/拖尾特效继续可用。
 - 兼容模式暂停对方的主题随壁纸、全局配色/字体/光标覆盖、侧栏圆角、正文原生字体恢复、自定义玻璃选择器及 3D 视差，避免改写 Codsh 的外观和浮层定位。原设置与上传文件保留；兼容期间调整的玻璃参数正常保存，停用 Codsh 后恢复对方原有设置与入口。玻璃模糊绘制在独立背景层，避免改变固定控件的定位参照。
 - Codsh 将 Wallpaper Engine 固定为 **1.3.3** 正式依赖，并在同一个安装包配置中启用两者。加载时自动校验版本、备份并应用兼容客户端；重新安装依赖后也会自动补回，不依赖 npm/pnpm 安装脚本。已单独安装的同名 `wallpaper-engine` 注册项使用相同 ID，避免启动两套实例。若自行升级到不支持的版本，兼容模块会报错并保留该版本文件。
-- `npm run compat:wallpaper` 保留为本机 desktop 安装的手动修复命令，也可传入插件目录。`npm run compat:wallpaper -- --restore` 可还原该副本的客户端；Codsh 处于启用状态时会自动补回兼容处理，如需独立使用原版请先停用或卸载 Codsh。
+- 壁纸组件关闭时会释放接口、定时器和媒体流，可在同一窗口关闭后重新启用；兼容安装按实际目录串行执行，并在停用时停止后续加载通知，避免安装、更新或快速切换开关时出现重复注册及 Windows 文件占用错误。
+- `npm run compat:wallpaper` 保留为本机 desktop 安装的手动修复命令，也可传入插件目录。`npm run compat:wallpaper -- --restore` 可还原该副本的客户端、字体接口及宿主生命周期补丁；Codsh 处于启用状态时会自动补回兼容处理，如需独立使用原版请先停用或卸载 Codsh。
 - 以本机 2026-09-29 桌面安装包的界面结构为适配基础，后续 Harness 更新可能需要调整选择器。
 - 配色跟随浅色、深色与系统外观设置，切换时保留自定义布局。
 - Windows 系统菜单与任务栏由操作系统管理。
@@ -115,6 +116,8 @@ npm run build
 npm test
 npm pack
 ```
+
+Windows 已安装 Harness 桌面端时，可运行 `powershell -NoProfile -File scripts/verify-desktop.ps1 -Test desktop-lifecycle-runtime.mjs`，使用桌面端真实 Cordis 和 Remote 环境验证重复启停、旧模块缓存与快速停用。
 
 | 文件 | 用途 |
 | :--- | :--- |

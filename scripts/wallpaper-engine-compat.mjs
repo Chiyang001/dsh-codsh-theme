@@ -2,6 +2,15 @@ import {readFile} from 'node:fs/promises';
 
 export const compatibilityMarker = '/* Codsh Wallpaper Engine compatibility v1 */';
 export const systemFontsMarker = '/* Codsh system fonts UTF-8 v1 */';
+export const hostLifecycleMarker = '/* Codsh Wallpaper Engine host lifecycle v1 */';
+
+/** Cordis constructs ordinary functions; their returned cleanup is not an effect. */
+export function patchWallpaperHost(source) {
+  if (source.includes(hostLifecycleMarker)) return source;
+  const needle = 'export function apply(ctx) {';
+  if (source.split(needle).length !== 2) throw Error('Wallpaper Engine 1.3.3 宿主生命周期接口不匹配，未修改文件');
+  return source.replace(needle, `${hostLifecycleMarker}\nexport function apply(ctx) {\n  ctx.effect(() => codshApplyWallpaperHost(ctx));\n}\nfunction codshApplyWallpaperHost(ctx) {`);
+}
 
 /** PowerShell pipes otherwise use the Windows code page while the reader decodes UTF-8. */
 export function patchSystemFonts(source) {
