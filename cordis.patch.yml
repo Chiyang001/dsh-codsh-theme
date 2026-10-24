@@ -1,3 +1,7 @@
 - insert:
+    - id: codsh-wallpaper-compat
+      name: dsh-codsh-theme/wallpaper-compat
+    - id: wallpaper-engine
+      name: dsh-plugin-wallpaper-engine
     - id: codsh-theme
       name: dsh-codsh-theme

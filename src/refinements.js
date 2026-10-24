@@ -7,6 +7,28 @@ function createRefinements(mark) {
   const conversationTabs = new Map();
   const layoutExits=new Set();
   let resizeTimer;
+  function positionEffort(view,force=false){
+    const panel=view.control?.panel;if(!panel?.isConnected)return;
+    const viewport=window.visualViewport;
+    const left=viewport?.offsetLeft||0,top=viewport?.offsetTop||0;
+    const width=viewport?.width||window.innerWidth,height=viewport?.height||window.innerHeight;
+    const box=panel.getBoundingClientRect();
+    // Measure layout size, not the animated/scaled paint bounds. Changes to
+    // the effort label or native pending state must not re-anchor the popup.
+    const panelWidth=panel.offsetWidth||box.width||260,panelHeight=panel.offsetHeight||box.height||120;
+    const region=view.button.closest('[data-composer-card]')||view.button.parentElement;
+    const bounds=region.getBoundingClientRect();
+    const layout=[left,top,width,height,panelWidth,panelHeight,bounds.left,bounds.top,bounds.width,bounds.height].map(value=>Math.round((value||0)*2)/2).join(',');
+    if(!force&&view.control.positionLayout===layout)return;
+    view.control.positionLayout=layout;
+    const rect=view.button.getBoundingClientRect();
+    const maxTop=Math.max(top+8,top+height-panelHeight-8);
+    const above=rect.top-panelHeight-8;
+    const y=above>=top+8?above:Math.min(rect.bottom+8,maxTop);
+    const values={left:`${Math.max(left+8,Math.min(rect.right-panelWidth,left+width-panelWidth-8))}px`,top:`${Math.max(top+8,Math.min(y,maxTop))}px`,bottom:'auto',maxHeight:`${Math.max(0,height-16)}px`};
+    for(const [key,value] of Object.entries(values))if(panel.style[key]!==value)panel.style[key]=value;
+  }
+  const positionEfforts=()=>{for(const view of modelViews.values())positionEffort(view,true);};
   function alignConversationTabs(){
     document.querySelectorAll('[data-conversation-tabs]').forEach(tabs=>{
       const root=tabs.closest(local('root'))||tabs.parentElement;
@@ -25,6 +47,7 @@ function createRefinements(mark) {
   const resizing=()=>{
     document.querySelectorAll(local('frame')).forEach(frame=>mark(frame,'data-codsh-resizing'));
     alignConversationTabs();
+    positionEfforts();
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(()=>document.querySelectorAll('[data-codsh-resizing]').forEach(frame=>frame.removeAttribute('data-codsh-resizing')),180);
   };
@@ -53,6 +76,9 @@ function createRefinements(mark) {
     }else{node.remove();layoutExits.delete(entry);}
   };
   window.addEventListener('resize',resizing);
+  window.addEventListener('scroll',positionEfforts,true);
+  window.visualViewport?.addEventListener('resize',positionEfforts);
+  window.visualViewport?.addEventListener('scroll',positionEfforts);
   document.addEventListener('click',sidebarToggle,true);
   const closeEffort = (view,closeNative=true) => {
     view.open=false;view.closed=true;view.pending=false;view.commitIndex=undefined;
@@ -68,6 +94,21 @@ function createRefinements(mark) {
   const escape = event => {if(event.key==='Escape')for(const view of modelViews.values())if(view.open){closeEffort(view);view.button.focus();}};
   document.addEventListener('pointerdown',outside);
   document.addEventListener('keydown',escape);
+  function focusEffort(view){
+    const control=view.control;
+    if(!view.open||!control?.restoreFocus||control.targetIndex!==undefined||view.trigger.disabled||control.range.disabled||!control.panel.isConnected)return;
+    if(document.activeElement!==view.trigger&&document.activeElement!==document.body)return;
+    control.range.focus({preventScroll:true});
+    if(document.activeElement===control.range)control.restoreFocus=false;
+  }
+  const restoreEffortFocus=event=>{
+    for(const view of modelViews.values()){
+      const control=view.control;
+      if(event.target!==view.trigger||!view.open||!control?.restoreFocus)continue;
+      queueMicrotask(()=>{if(view.control===control)focusEffort(view);});
+    }
+  };
+  document.addEventListener('focusin',restoreEffortFocus);
   const text = (node,value) => { if (node.textContent !== value) node.textContent = value; };
   const chevron = () => {
     const icon = document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -78,6 +119,7 @@ function createRefinements(mark) {
     icon.append(path); return icon;
   };
   function refresh() {
+    for(const view of modelViews.values())positionEffort(view);
     document.querySelectorAll(local('tabs')).forEach(tabs=>{
       const labels=Array.from(tabs.querySelectorAll('button')).map(button=>button.textContent.trim());
       if(labels.some(label=>/^(对话|Chat|Conversation)$/i.test(label))&&labels.some(label=>/^(轨迹|Trajectory)$/i.test(label)))mark(tabs,'data-conversation-tabs');
@@ -131,7 +173,10 @@ function createRefinements(mark) {
         caption.className='codsh-combined-effort';
         const modelCaption=document.createElement('span');modelCaption.className='codsh-combined-model';button.prepend(modelCaption);
         view = {button,caption,modelCaption,trigger,pending:false,open:false};
-        button.addEventListener('click',() => {
+        button.addEventListener('click',event => {
+          // The delegated native click already opens/closes its menu. Do not
+          // let this second click reach the host's outside-click listener.
+          event.stopPropagation();
           if(view.open){closeEffort(view);return;}
           view.open=true;view.closed=false;
           view.pending = true;
@@ -165,6 +210,7 @@ function createRefinements(mark) {
       // Model/Effort root recreated by native selection completion.
       if(menu&&view.open)mark(menu,'data-codsh-effort-bridge');
       if(!menu&&view.control&&view.control.range.disabled!==trigger.disabled)view.control.range.disabled=trigger.disabled;
+      focusEffort(view);
       const nativeOptions = menu ? Array.from(menu.querySelectorAll('button[role="menuitemradio"]')) : [];
       // Models live under a groups container. Effort rows are direct children.
       const isEffort = nativeOptions.length > 0 && nativeOptions.every(option => option.parentElement === menu);
@@ -204,9 +250,6 @@ function createRefinements(mark) {
         const ticks = document.createElement('div');ticks.className = 'codsh-effort-ticks';
         fill.append(sparks);track.append(fill,thumb,range,ticks);panel.append(heading,track);
         panel.setAttribute('role','dialog');panel.setAttribute('aria-label','调整思考强度');
-        const rect=view.button.getBoundingClientRect();
-        panel.style.left=`${Math.max(8,Math.min(rect.right-260,window.innerWidth-268))}px`;
-        panel.style.bottom=`${Math.max(8,window.innerHeight-rect.top+8)}px`;
         trigger.parentElement.append(panel);
         if(typeof window.requestAnimationFrame==='function'&&!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
           let epoch;
@@ -232,12 +275,14 @@ function createRefinements(mark) {
           window.requestAnimationFrame(paintJet);
         }
         control = {panel,title,modelButton,track,range,ticks,signature:null};view.control=control;effortViews.set(menu,control);
+        positionEffort(view);
         const commit=index=>{
           const option=view.options?.[index];if(!option||trigger.disabled||(option.isConnected&&option.disabled))return;
           track.removeAttribute('data-dragging');
           // Resolve the current preview before starting the snap transition.
           getComputedStyle(track).getPropertyValue('--ratio');
           range.value=String(index);preview();
+          control.restoreFocus=document.activeElement===range;
           control.targetIndex=index;
           if(option.isConnected){option.click();}
           else {view.commitIndex=index;view.pending=true;if(trigger.getAttribute('aria-expanded')!=='true')trigger.click();refresh();}
@@ -334,8 +379,12 @@ function createRefinements(mark) {
   return {refresh,chevron,dispose(){
     for(const state of conversationTabs.values())state.animation?.cancel();conversationTabs.clear();
     clearTimeout(resizeTimer);window.removeEventListener('resize',resizing);document.removeEventListener('click',sidebarToggle,true);
+    window.removeEventListener('scroll',positionEfforts,true);
+    window.visualViewport?.removeEventListener('resize',positionEfforts);
+    window.visualViewport?.removeEventListener('scroll',positionEfforts);
     for(const entry of layoutExits){entry.animation?.cancel();entry.node.remove();}layoutExits.clear();
     document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape);
+    document.removeEventListener('focusin',restoreEffortFocus);
     for(const view of modelViews.values()){closeEffort(view,false);view.button.remove();}
     for(const view of effortViews.values())view.panel.remove();
     for(const view of settingsViews.values()){view.search.remove();view.back.remove();}

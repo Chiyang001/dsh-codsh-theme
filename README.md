@@ -28,7 +28,7 @@
 https://github.com/Chiyang001/dsh-codsh-theme
 ```
 
-点击 **安装**，完成后完全退出并重新打开 Harness。仓库包含构建好的插件，普通用户无需手动构建。
+点击 **安装**，完成后完全退出并重新打开 Harness。安装 Codsh 会同时下载并启用 **Wallpaper Engine 插件 1.3.3**，首次加载时自动应用兼容处理，无需另装插件或手动执行补丁。仓库包含构建好的插件，普通用户无需手动构建。
 
 > 安装需要能够访问 GitHub。选择 npm 镜像源不会代理 GitHub 请求。
 
@@ -37,7 +37,7 @@ https://github.com/Chiyang001/dsh-codsh-theme
 | 区域 | 体验 |
 | :--- | :--- |
 | **整体外观** | 统一配色、圆角、滚动条、菜单、弹窗和工具卡片；保留 Harness 的原生功能。 |
-| **背景主题** | 设置 → 通用设置 → 外观，提供 8 种内置背景预设、自定义图片和默认无背景；浅色、深色与跟随系统通过独立下拉框选择。 |
+| **背景主题** | 设置 → 通用设置 → 外观，提供 8 种内置背景预设、自定义图片和默认无背景；明暗模式下拉菜单与其他菜单统一样式，支持浅色、深色、跟随系统及键盘操作。 |
 | **侧栏导航** | 52px 图标栏，项目与最近会话独立筛选并高亮；账户入口位于最左侧底部。 |
 | **项目与会话** | 紧凑行高与统一字号，展开、收起均有过渡；支持重命名、快捷置顶和三个点菜单。 |
 | **欢迎页面** | DeepSeek 鲸鱼标志、工作区欢迎语、靠底部的双层圆角输入区；点击鲸鱼可触发轻柔摇摆。 |
@@ -92,6 +92,10 @@ npx @deepseek-ai/dsh web
 
 ## 兼容性
 
+- 与 `dsh-plugin-wallpaper-engine` 同时使用时，背景统一在 **通用设置 → 外观** 中选择，不再提供切回外部壁纸的入口。兼容补丁隐藏对方侧栏和设置中的壁纸库、播放与音频入口，暂停壁纸播放和轮播；外观仅保留玻璃调节，挂件、会话头像与鼠标点击/拖尾特效继续可用。
+- 兼容模式暂停对方的主题随壁纸、全局配色/字体/光标覆盖、侧栏圆角、正文原生字体恢复、自定义玻璃选择器及 3D 视差，避免改写 Codsh 的外观和浮层定位。原设置与上传文件保留；兼容期间调整的玻璃参数正常保存，停用 Codsh 后恢复对方原有设置与入口。玻璃模糊绘制在独立背景层，避免改变固定控件的定位参照。
+- Codsh 将 Wallpaper Engine 固定为 **1.3.3** 正式依赖，并在同一个安装包配置中启用两者。加载时自动校验版本、备份并应用兼容客户端；重新安装依赖后也会自动补回，不依赖 npm/pnpm 安装脚本。已单独安装的同名 `wallpaper-engine` 注册项使用相同 ID，避免启动两套实例。若自行升级到不支持的版本，兼容模块会报错并保留该版本文件。
+- `npm run compat:wallpaper` 保留为本机 desktop 安装的手动修复命令，也可传入插件目录。`npm run compat:wallpaper -- --restore` 可还原该副本的客户端；Codsh 处于启用状态时会自动补回兼容处理，如需独立使用原版请先停用或卸载 Codsh。
 - 以本机 2026-09-29 桌面安装包的界面结构为适配基础，后续 Harness 更新可能需要调整选择器。
 - 配色跟随浅色、深色与系统外观设置，切换时保留自定义布局。
 - Windows 系统菜单与任务栏由操作系统管理。
@@ -101,7 +105,7 @@ npx @deepseek-ai/dsh web
 <summary><strong>开发与验证</strong></summary>
 
 ```shell
-npm install
+npm install --legacy-peer-deps
 npm run build
 npm test
 npm pack
@@ -114,10 +118,13 @@ npm pack
 | `src/refinements.js` | 模型与推理交互细节 |
 | `src/sidebar-actions.js` | 项目和会话菜单 |
 | `src/search.js` | 项目与会话搜索 |
+| `compat/wallpaper-engine.js` | 壁纸引擎运行时兼容：暂停冲突设置并保留原值 |
+| `compat/wallpaper-host.js` | 加载时自动配置捆绑依赖并刷新客户端 |
+| `scripts/configure-wallpaper-engine.mjs` | 安装或恢复 Wallpaper Engine 1.3.3 兼容补丁 |
 | `index.js` | 永久删除的后端扩展 |
 | `dist/client.js` | 已构建的 Harness 客户端模块 |
 
-运行时没有额外 npm 依赖，操作通过 Harness 原生服务和 RPC 提交。测试覆盖模块加载、React 节点重建、导航、折叠、滑杆提交、会话操作与卸载恢复。
+Wallpaper Engine 是随 Codsh 安装的正式运行依赖，Harness 的框架服务由宿主提供；本地开发使用 `--legacy-peer-deps` 避免额外安装一套宿主框架。会话操作通过 Harness 原生服务和 RPC 提交。测试覆盖模块加载、React 节点重建、导航、折叠、滑杆提交、会话操作与卸载恢复，并使用固定依赖的真实客户端和 React 18 渲染验证兼容面板、旧配置、预设覆盖、捆绑安装与停用恢复。
 
 `scripts/verify-desktop.ps1` 使用本机 Desktop 自带的 Electron 和 Cordis 验证插件激活、RPC 和清理。DOM 与运行时测试不等于实机视觉验证。
 

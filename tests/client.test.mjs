@@ -29,6 +29,53 @@ function setup() {
 }
 const settle = () => new Promise(resolve=>setTimeout(resolve,0));
 
+test('Codsh alone owns backgrounds while Wallpaper Engine supplies glass',async()=>{
+  const env=setup(),d=env.document,w=env.dom.window;
+  d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="theme_cubeRow"></div></div>');
+  await settle();
+  d.querySelector('[data-background="sakura"]').click();
+  assert.ok(d.documentElement.hasAttribute('data-codsh-background'));
+  d.body.insertAdjacentHTML('beforeend','<main class="desktop_centerCol"><div class="chat_composerStack"><div class="input_card"></div></div></main>');
+  for(const marker of ['data-we-wallpaper','data-we-glass-page']){
+    d.body.setAttribute(marker,'on');await settle();
+    assert.equal(d.documentElement.hasAttribute('data-codsh-background'),false);
+    assert.equal(d.querySelector('[data-codsh-background-engine]'),null);
+    assert.equal(d.documentElement.getAttribute('data-codsh-background-source'),'codsh');
+    assert.match(d.querySelector('style[data-codsh-background]').textContent,/--codsh-background-image:url/);
+    assert.ok(d.querySelector('[data-codsh-sidebar]'),'Codsh navigation stays mounted');
+    assert.equal(w.localStorage.getItem('codsh.background'),'sakura');
+    const palettes=new Set();
+    for(const button of d.querySelectorAll('[data-background]:not([data-background="none"])')){
+      button.click();
+      assert.equal(d.documentElement.getAttribute('data-codsh-background-source'),'codsh');
+      assert.ok(d.documentElement.hasAttribute('data-codsh-palette'));
+      const css=d.querySelector('style[data-codsh-background]').textContent;
+      assert.match(css,/--codsh-background-image:url/);
+      assert.doesNotMatch(css,/--dsw-specific-sidebar-fill/,'external glass tokens stay owned by Wallpaper Engine');
+      palettes.add(w.getComputedStyle(d.body).getPropertyValue('--codsh-sidebar'));
+    }
+    assert.equal(palettes.size,8);
+    d.querySelector('[data-background="sakura"]').click();
+    if(marker==='data-we-wallpaper'){
+      d.body.setAttribute('data-we-glass-chat','on');
+      assert.equal(w.getComputedStyle(d.querySelector('.desktop_centerCol')).backgroundColor,'rgba(0, 0, 0, 0)');
+      d.body.removeAttribute('data-we-glass-chat');
+    }
+    d.body.removeAttribute(marker);await settle();
+    assert.ok(d.documentElement.hasAttribute('data-codsh-background'));
+  }
+  d.body.setAttribute('data-we-wallpaper','on');await settle();
+  env.dispose();assert.ok(d.body.hasAttribute('data-we-wallpaper'),'unloading does not alter the other plugin');
+  assert.equal(d.querySelector('.codsh-wallpaper-layer'),null);
+  const source=await readFile(new URL('../src/backgrounds.js',import.meta.url),'utf8');
+  w.localStorage.setItem('codsh.background.source','wallpaper');
+  w.eval('const BACKGROUND_PRESETS=[{id:"sakura",url:"data:image/webp;base64,AAAA"}];'+source+';window.backgroundTest=createBackgrounds({theme:{}},()=>{});');
+  assert.equal(d.documentElement.getAttribute('data-codsh-background-source'),'codsh','legacy wallpaper-source preferences cannot reactivate the conflicting source');
+  assert.ok(d.documentElement.hasAttribute('data-codsh-palette'));
+  assert.match(d.querySelector('style[data-codsh-background]').textContent,/--codsh-background-image:url/);
+  w.backgroundTest.dispose();w.close();
+});
+
 test('permission menu keeps native actions and adds themed two-line labels without an entry arrow',async()=>{
   const env=setup(),d=env.document;let selected=0;
   d.body.insertAdjacentHTML('beforeend','<div data-composer-seat><button class="input_add" aria-haspopup="listbox">+</button><button id="permissions"><span class="permission_triggerIcon"></span><span class="permission_triggerLabel">完全权限</span><span class="permission_chevron"></span></button></div><div role="menu" id="permission-options"><button role="menuitem"><span class="menu_itemLabel">仅可查看</span></button><button role="menuitem"><span class="menu_itemLabel">工作区内修改</span></button><button role="menuitem"><span class="menu_itemLabel">完全权限</span></button></div>');
@@ -60,8 +107,27 @@ test('combined picker opens effort first without extra icons and routes model-na
   };
   await settle();
   const pill=d.querySelector('.codsh-reasoning-trigger');assert.equal(pill.querySelector('.codsh-combined-model').textContent,'DeepSeek');
+  const nativeOutside=event=>{if(event.target.closest?.('.codsh-reasoning-trigger'))d.getElementById('unified-menu')?.remove();};
+  d.addEventListener('click',nativeOutside);
   assert.equal(env.dom.window.getComputedStyle(trigger).opacity,'0');assert.equal(env.dom.window.getComputedStyle(trigger).display,'flex');pill.click();await settle();
   const panel=d.querySelector('.codsh-effort-control');assert.equal(panel.querySelector('.codsh-effort-model').textContent,'DeepSeek ›');
+  const w=env.dom.window;
+  panel.getBoundingClientRect=()=>({width:260,height:120});
+  Object.defineProperties(panel,{offsetWidth:{value:260},offsetHeight:{value:120}});
+  let anchor={left:800,right:1000,top:700,bottom:728};
+  pill.getBoundingClientRect=()=>anchor;
+  for(const [width,height,rect] of [[1024,768,anchor],[320,240,{left:180,right:310,top:210,bottom:238}],[320,240,{left:8,right:140,top:10,bottom:38}]]){
+    w.innerWidth=width;w.innerHeight=height;anchor=rect;w.dispatchEvent(new w.Event('resize'));
+    const x=parseFloat(panel.style.left),y=parseFloat(panel.style.top);
+    assert.ok(x>=8&&x+260<=width-8,'reasoning popup stays within horizontal viewport');
+    assert.ok(y>=8&&y+120<=height-8,'reasoning popup flips/clamps within vertical viewport');
+  }
+  const stablePosition=[panel.style.left,panel.style.top];
+  anchor={left:anchor.left+4,right:anchor.right+4,top:anchor.top+2,bottom:anchor.bottom+2};
+  panel.getBoundingClientRect=()=>({width:254,height:116});
+  trigger.querySelector('.model_triggerEffort').textContent='Low';await settle();
+  assert.deepEqual([panel.style.left,panel.style.top],stablePosition,'label/pending refresh and paint animation do not move an open popup');
+  d.removeEventListener('click',nativeOutside);
   const trackStyle=env.dom.window.getComputedStyle(panel.querySelector('.codsh-effort-track'));
   const thumbStyle=env.dom.window.getComputedStyle(panel.querySelector('.codsh-effort-thumb'));
   assert.ok(parseFloat(trackStyle.height)<parseFloat(thumbStyle.height),'thumb covers the thinner track end caps');
@@ -120,8 +186,8 @@ test('appearance presets persist, native mode delegates, remounts recover and di
   assert.equal(d.querySelector('[data-background="none"]').textContent,'默认');
   assert.equal(d.querySelector('[data-background="custom"]'),null);
   assert.ok(d.querySelector('.codsh-background-upload'));
-  const select=d.querySelector('.codsh-appearance select');assert.equal(select.value,'dark');
-  select.value='light';select.dispatchEvent(new env.dom.window.Event('change'));assert.deepEqual(modes,['light']);
+  const mode=d.querySelector('.codsh-appearance-trigger');assert.equal(mode.value,'dark');
+  mode.click();d.querySelector('.codsh-appearance-menu [value="light"]').click();assert.deepEqual(modes,['light']);
   d.querySelector('[data-background="ocean"]').click();await settle();
   assert.equal(env.dom.window.localStorage.getItem('codsh.background'),'ocean');assert.ok(d.documentElement.hasAttribute('data-codsh-background'));
   const oceanSidebar=env.dom.window.getComputedStyle(d.body).getPropertyValue('--codsh-sidebar');assert.match(oceanSidebar,/207/);
@@ -146,6 +212,54 @@ test('appearance presets persist, native mode delegates, remounts recover and di
   d.querySelector('[data-background="none"]').click();assert.equal(d.documentElement.hasAttribute('data-codsh-background'),false);
   env.dispose();assert.equal(d.querySelector('.codsh-appearance'),null);assert.equal(d.querySelector('[data-codsh-native-appearance]'),null);assert.equal(d.querySelector('style[data-codsh-background]'),null);
   env.dom.window.close();
+});
+
+test('appearance dropdown shares menu styling, supports keyboard navigation and closes cleanly',async()=>{
+  const env=setup(),d=env.document,w=env.dom.window;
+  let preference='system';const changes=[];
+  env.context.theme.getTheme=()=>({preference});
+  env.context.theme.setTheme=value=>{preference=value;changes.push(value);};
+  const mount=()=>d.body.insertAdjacentHTML('beforeend','<div data-shortcut-modal="settings"><div class="theme_cubeRow"><button aria-pressed="true">跟随系统</button></div></div>');
+  mount();await settle();
+  const trigger=d.querySelector('.codsh-appearance-trigger');
+  assert.equal(d.querySelector('.codsh-appearance select'),null);
+  assert.equal(trigger.textContent,'跟随系统');
+  Object.defineProperty(w,'innerWidth',{value:640,writable:true});Object.defineProperty(w,'innerHeight',{value:520,writable:true});
+  trigger.getBoundingClientRect=()=>({left:560,right:688,top:450,bottom:482,width:128,height:32});
+  trigger.click();
+  let menu=d.querySelector('.codsh-appearance-menu');
+  assert.equal(menu.parentElement,d.body,'popup is outside the scrolling settings container');
+  assert.equal(menu.dataset.codshSurface,'menu');
+  assert.equal(w.getComputedStyle(menu).borderRadius,'14px','same shared surface rule as other dropdowns');
+  assert.equal(trigger.getAttribute('aria-controls'),menu.id);
+  assert.equal(trigger.getAttribute('aria-expanded'),'true');
+  assert.equal(d.activeElement.value,'system');
+  assert.equal(menu.querySelector('[aria-checked="true"]').value,'system');
+  assert.ok(parseFloat(menu.style.left)+parseFloat(menu.style.width)<=632,'popup stays inside the right viewport edge');
+  assert.ok(parseFloat(menu.style.top)<450,'popup opens above when there is no space below');
+  const key=value=>d.activeElement.dispatchEvent(new w.KeyboardEvent('keydown',{key:value,bubbles:true,cancelable:true}));
+  key('ArrowDown');assert.equal(d.activeElement.value,'light');assert.deepEqual(changes,[]);
+  key('End');assert.equal(d.activeElement.value,'system');key('Home');assert.equal(d.activeElement.value,'light');
+  d.activeElement.click();await settle();
+  assert.deepEqual(changes,['light']);assert.equal(trigger.textContent,'浅色');assert.equal(d.activeElement,trigger);
+  assert.equal(d.querySelector('.codsh-appearance-menu'),null);
+  trigger.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true,cancelable:true}));
+  assert.equal(d.activeElement.value,'system');key('Escape');
+  assert.equal(d.querySelector('.codsh-appearance-menu'),null);assert.equal(d.activeElement,trigger);
+  assert.equal(trigger.getAttribute('aria-expanded'),'false');assert.equal(trigger.hasAttribute('aria-controls'),false);
+  trigger.click();preference='dark';d.body.setAttribute('data-ds-dark-theme','');await settle();
+  assert.equal(trigger.textContent,'深色');
+  assert.equal(d.querySelector('.codsh-appearance-menu [aria-checked="true"]').value,'dark');
+  d.body.dispatchEvent(new w.MouseEvent('pointerdown',{bubbles:true}));assert.equal(d.querySelector('.codsh-appearance-menu'),null);
+  trigger.click();key('Tab');assert.equal(d.querySelector('.codsh-appearance-menu'),null);
+  trigger.click();d.querySelector('[data-shortcut-modal="settings"]').dispatchEvent(new w.Event('scroll'));assert.equal(d.querySelector('.codsh-appearance-menu'),null);
+  trigger.click();env.context.theme.setTheme=()=>{throw Error('主题保存失败');};
+  d.querySelector('.codsh-appearance-menu [value="light"]').click();
+  assert.equal(d.querySelector('.codsh-background-status').textContent,'主题保存失败');assert.equal(trigger.value,'dark');
+  d.querySelector('[data-shortcut-modal="settings"]').remove();await settle();assert.equal(d.querySelector('.codsh-appearance-menu'),null);
+  mount();await settle();d.querySelector('.codsh-appearance-trigger').click();
+  env.dispose();assert.equal(d.querySelector('.codsh-appearance-menu'),null);assert.equal(d.querySelector('.codsh-appearance-trigger'),null);
+  w.close();
 });
 
 test('custom background is validated, stored locally and restored on a fresh activation',async()=>{
@@ -496,7 +610,10 @@ test('reasoning panel survives native close and bridges the next selection; flow
     const menu=d.getElementById('persistent-menu');menu.lastElementChild.addEventListener('click',()=>{
       menu.replaceChildren(...labels.map((label,index)=>{
         const option=d.createElement('button');option.setAttribute('role','menuitemradio');option.setAttribute('aria-checked',String(index===selected));option.textContent=label;
-        option.addEventListener('click',()=>{selected=index;commits++;trigger.querySelector('.model_triggerEffort').textContent=label;menu.remove();trigger.setAttribute('aria-expanded','false');});return option;
+        option.addEventListener('click',()=>{
+          selected=index;commits++;menu.remove();trigger.setAttribute('aria-expanded','false');trigger.focus();trigger.disabled=true;
+          setTimeout(()=>{trigger.querySelector('.model_triggerEffort').textContent=label;trigger.disabled=false;trigger.focus();},0);
+        });return option;
       }));
     });
   });
@@ -504,6 +621,7 @@ test('reasoning panel survives native close and bridges the next selection; flow
   const panel=d.querySelector('.codsh-effort-control'),range=panel.querySelector('input');
   range.value='2';range.dispatchEvent(new env.dom.window.Event('change'));await settle();
   assert.equal(commits,1);assert.equal(panel.isConnected,true);assert.equal(panel.classList.contains('codsh-effort-max'),false);
+  assert.equal(d.activeElement,range,'keyboard focus returns after the native asynchronous save finishes');
   range.value='2.7';range.dispatchEvent(new env.dom.window.Event('input'));assert.equal(commits,1);assert.equal(panel.classList.contains('codsh-effort-max'),true);
   assert.equal(panel.querySelector('.codsh-effort-sparks').parentElement,panel.querySelector('.codsh-effort-fill'));
   range.dispatchEvent(new env.dom.window.Event('change'));await settle();await settle();

@@ -420,7 +420,7 @@ export function apply(ctx) {
       queued = true;
       queueMicrotask(() => { queued = false; if (!disposed) refresh(); });
     });
-    observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['style','data-sidebar-collapsed','class','data-phase','data-content-phase','data-ds-dark-theme','data-dsh-theme-source','data-codsh-theme','aria-controls','aria-current','aria-expanded','aria-checked','disabled']});
+    observer.observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['data-we-wallpaper','data-we-glass-page','style','data-sidebar-collapsed','class','data-phase','data-content-phase','data-ds-dark-theme','data-dsh-theme-source','data-codsh-theme','aria-controls','aria-current','aria-expanded','aria-checked','disabled']});
     const updateStores=()=>{refresh();projectSearch.refresh();};
     const unsubscribeSessions = ctx.sessions.list.subscribe(updateStores);
     const unsubscribeWorkspaces = ctx.workspaces.list.subscribe(updateStores);

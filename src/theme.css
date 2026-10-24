@@ -229,7 +229,7 @@ html[data-codsh-theme] [data-composer-stats] [class$="_label"] {white-space:norm
 [data-codsh-effort-menu] {width:min(280px,calc(100vw - 32px));border-radius:18px!important;padding:12px 14px!important;}
 [data-codsh-effort-menu]>button[role="menuitemradio"] {position:absolute;width:1px;min-width:0;height:1px;min-height:0;padding:0;overflow:hidden;clip-path:inset(50%);}
 [data-codsh-effort-bridge] {opacity:0!important;pointer-events:none!important;}
-.codsh-effort-control {position:fixed;z-index:10000;box-sizing:border-box;width:280px;max-width:calc(100vw - 16px);padding:12px 14px;border:1px solid var(--codsh-tone-363636);border-radius:18px;background:var(--codsh-raised);box-shadow:0 12px 40px #0005;text-align:center;animation:codsh-popup 180ms var(--codsh-ease);}
+.codsh-effort-control {position:fixed;z-index:10000;box-sizing:border-box;width:280px;max-width:calc(100vw - 16px);overflow:auto;padding:12px 14px;border:1px solid var(--codsh-tone-363636);border-radius:18px;background:var(--codsh-raised);box-shadow:0 12px 40px #0005;text-align:center;animation:codsh-popup 180ms var(--codsh-ease);}
 .codsh-effort-title {display:block;margin-bottom:8px;color:var(--codsh-accent);font:600 14px/24px var(--dsw-font-family);}
 .codsh-effort-track {position:relative;height:24px;overflow:visible;border-radius:20px;background:var(--codsh-tone-383838);--progress:0%;}
 .codsh-effort-fill {position:absolute;inset:0 auto 0 0;width:calc(16px + (100% - 32px)*var(--ratio,0));background:var(--codsh-accent);border-radius:999px;overflow:hidden;pointer-events:none;z-index:1;}
@@ -286,14 +286,22 @@ html[data-codsh-theme] [data-shortcut-modal="settings"] [class$="_section"]:has(
 [data-codsh-native-appearance] {display:none!important;}
 .codsh-appearance {padding:4px 0 14px;}
 .codsh-appearance-mode {display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:13px;}
-.codsh-appearance-mode select {min-width:128px;padding:6px 10px;border:1px solid var(--codsh-tone-404040);border-radius:8px;background:var(--codsh-raised);color:var(--codsh-text);}
+.codsh-appearance-trigger {display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:128px;padding:6px 10px;border:1px solid var(--codsh-tone-404040);border-radius:8px;background:var(--codsh-raised);color:var(--codsh-text);font:400 12px/18px var(--codsh-ui-font);cursor:pointer;}
+.codsh-appearance-trigger:is(:hover,[aria-expanded="true"]) {background:var(--codsh-hover);border-color:var(--codsh-border);}
+.codsh-appearance-trigger svg,.codsh-appearance-menu svg {flex:none;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;}
+.codsh-appearance-trigger svg {transition:rotate var(--codsh-fast) ease;}
+.codsh-appearance-trigger[aria-expanded="true"] svg {rotate:180deg;}
+.codsh-appearance-menu {box-sizing:border-box;position:fixed;z-index:11000;max-width:calc(100vw - 16px);overflow:auto;padding:5px;color:var(--codsh-text);font:400 12px/18px var(--codsh-ui-font);}
+.codsh-appearance-menu button {display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;padding:6px 9px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;}
+.codsh-appearance-menu button:is(:hover,:focus-visible,[aria-checked="true"]) {background:var(--codsh-hover);outline:none;}
+.codsh-appearance-menu button:not([aria-checked="true"]) svg {visibility:hidden;}
 .codsh-appearance h3 {margin:20px 0 10px;font-size:13px;font-weight:500;}
 .codsh-background-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:10px;}
 .codsh-background-grid button {min-width:0;padding:5px 5px 8px;border:1px solid var(--codsh-tone-404040);border-radius:10px;background:var(--codsh-raised);color:var(--codsh-text);text-align:left;cursor:pointer;}
 .codsh-background-grid button[aria-pressed="true"] {border-color:var(--codsh-text);box-shadow:0 0 0 1px var(--codsh-text);}
 .codsh-background-preview {display:block;aspect-ratio:16/9;margin-bottom:6px;border-radius:6px;background:var(--codsh-base) center/cover;}
 .codsh-background-upload {margin-top:12px;padding:6px 10px;border:1px solid var(--codsh-tone-404040);border-radius:8px;background:var(--codsh-raised);color:var(--codsh-text);cursor:pointer;}
-.codsh-background-status {min-height:18px;margin:6px 0 0;font-size:12px;color:var(--codsh-muted);}
+.codsh-background-status,.codsh-background-hint {min-height:18px;margin:6px 0 0;font-size:12px;color:var(--codsh-muted);}
 /* Windows centerCol and conversation roots paint opaque surfaces above frame.
    Paint the wallpaper on those actual surfaces, with viewport-aligned sizing. */
 html[data-codsh-theme][data-codsh-background] :is([class$="_centerCol"],[data-shortcut-modal="settings"]) {background-color:var(--codsh-base)!important;background-image:linear-gradient(color-mix(in srgb,var(--codsh-base) 48%,transparent),color-mix(in srgb,var(--codsh-base) 48%,transparent)),var(--codsh-background-image)!important;background-position:center!important;background-size:cover!important;background-repeat:no-repeat!important;background-attachment:scroll!important;}
@@ -578,3 +586,28 @@ html[data-codsh-theme] [data-codsh-trajectory] :is([class$="_title"],[class$="_o
 html[data-codsh-theme] .codsh-effort-control .codsh-effort-thumb {top:-4px;}
 .codsh-effort-track input {inset:-4px 0;touch-action:none;}
 @media (prefers-reduced-motion:reduce) {.codsh-effort-track {transition:none;}}
+
+/* Codsh owns the background; Wallpaper Engine may supply glass surfaces. */
+.codsh-wallpaper-layer {display:none;}
+html[data-codsh-theme][data-codsh-background-source="codsh"] .codsh-wallpaper-layer {display:block;position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(color-mix(in srgb,var(--codsh-base) 35%,transparent),color-mix(in srgb,var(--codsh-base) 35%,transparent)),var(--codsh-background-image,none) center/cover no-repeat,var(--codsh-base);}
+html[data-codsh-theme] :is(#dsh-wallpaper-engine-layer,#dsh-wallpaper-engine-scrim) {visibility:hidden!important;}
+html[data-codsh-theme][data-codsh-background-source="codsh"] body[data-we-glass-page] :is([data-shortcut-modal="settings"],[class$="_frame"],[class$="_centerCol"],[class$="_main"],[class$="_mainArea"],[class$="_conversation"],[class$="_embeddedBody"],[class$="_root"][data-phase],[data-phase],[data-codsh-automation],[data-codsh-trajectory]) {background:transparent!important;}
+html[data-codsh-theme][data-codsh-palette][data-codsh-background-source="codsh"] body[data-we-glass-page] {--codsh-compat-glass-base:var(--codsh-raised);}
+html[data-codsh-theme] body[data-we-wallpaper] :is([class$="_frame"],[class$="_centerCol"],[class$="_main"],[class$="_mainArea"],[class$="_conversation"],[class$="_embeddedBody"],[class$="_root"][data-phase],[data-phase],[data-codsh-automation],[data-codsh-trajectory]) {background:transparent!important;}
+html[data-codsh-theme] body[data-we-glass-page][data-we-glass-chat] :is([data-composer-card],[class$="_composerStack"] [class$="_card"]) {background:var(--dsw-specific-input-major,var(--codsh-input))!important;}
+html[data-codsh-theme] body[data-we-glass-page][data-we-left-sidebar] [data-codsh-sidebar] {background:color-mix(in srgb,var(--codsh-compat-glass-base,var(--we-readability-base,var(--codsh-sidebar))) calc(var(--we-left-sidebar-alpha,.25) * 100%),transparent)!important;}
+html[data-codsh-theme] body:is([data-we-wallpaper],[data-we-glass-page]) {background:transparent;}
+html[data-codsh-theme] body:is([data-we-wallpaper],[data-we-glass-page]) [data-codsh-sidebar] {background:var(--dsw-specific-sidebar-fill,transparent);}
+html[data-codsh-theme] body[data-we-left-sidebar] [data-codsh-sidebar]::before {background:transparent;backdrop-filter:none;}
+html[data-codsh-theme]:has(body[data-we-titlebar-glass])[data-windows-titlebar] [class$="_frame"]::before {backdrop-filter:none;box-shadow:none;}
+html[data-codsh-theme] body:is([data-we-wallpaper],[data-we-glass-page]) :is([class$="_composerSeat"],[class$="_composerSeat"]::before,[class$="_composerSeat"]::after) {background:transparent!important;box-shadow:none!important;}
+html[data-codsh-theme] body[data-we-glass-floaters] :is(.codsh-effort-control,.codsh-search-card) {background:color-mix(in srgb,var(--codsh-compat-glass-base,var(--we-readability-base,var(--codsh-raised))) calc(var(--we-floaters-alpha,.25) * 100%),transparent)!important;backdrop-filter:blur(var(--we-floaters-blur,var(--we-blur,20px)));}
+
+/* Backdrop filters establish a containing block for fixed descendants. Paint
+   glass on an inert background instead: native titlebar/menu anchors must
+   keep their viewport coordinates and their original React ancestry. */
+html[data-codsh-theme] body[data-we-left-sidebar] [data-codsh-sidebar],
+html[data-codsh-theme] body[data-we-glass-chat] :is([data-composer-card],[class$="_composerStack"] [class$="_card"]) {backdrop-filter:none!important;-webkit-backdrop-filter:none!important;isolation:isolate;}
+html[data-codsh-theme] body[data-we-left-sidebar] [data-codsh-sidebar]::after,
+html[data-codsh-theme] body[data-we-glass-chat] :is([data-composer-card],[class$="_composerStack"] [class$="_card"])::before {content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;backdrop-filter:blur(var(--we-blur,20px));-webkit-backdrop-filter:blur(var(--we-blur,20px));}
+html[data-codsh-theme] body[data-we-left-sidebar] [data-codsh-sidebar]::after {backdrop-filter:blur(var(--we-left-sidebar-blur,var(--we-blur,20px)));-webkit-backdrop-filter:blur(var(--we-left-sidebar-blur,var(--we-blur,20px)));}

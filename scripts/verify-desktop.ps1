@@ -1,3 +1,4 @@
+param([string]$Test = 'desktop-runtime.mjs')
 $ErrorActionPreference = 'Stop'
 $taskElectronPath = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\DeepSeek Harness.exe'
 if (-not (Test-Path -LiteralPath $taskElectronPath)) { throw 'DeepSeek Harness Desktop is not installed at its default path.' }
@@ -8,7 +9,7 @@ try {
   New-Item -ItemType Directory -Path $taskOutputDirectory -Force | Out-Null
   $taskOut = Join-Path $taskOutputDirectory 'runtime.stdout.log'
   $taskErr = Join-Path $taskOutputDirectory 'runtime.stderr.log'
-  $taskTestPath = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\tests\desktop-runtime.mjs')).Path
+  $taskTestPath = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot (Join-Path '..\tests' $Test))).Path
   $taskProcess = Start-Process -FilePath $taskElectronPath -ArgumentList @('--expose-internals', ('"' + $taskTestPath + '"')) -WindowStyle Hidden -Wait -PassThru -RedirectStandardOutput $taskOut -RedirectStandardError $taskErr
   Get-Content -LiteralPath $taskOut
   Get-Content -LiteralPath $taskErr

@@ -10,11 +10,80 @@ function createBackgrounds(ctx,mark) {
       '--codsh-tone-303030':input,'--codsh-tone-242424':raised,'--codsh-tone-252525':raised,'--codsh-tone-34353c':hover,'--codsh-tone-3b3b3b':hover,'--codsh-tone-2d2d2d':hover,'--codsh-tone-323232':border,'--codsh-tone-363636':border,
       '--codsh-glass-tint':rail,'--dsw-specific-sidebar-fill':sidebar,'--dsw-specific-input-major':input,'--dsw-specific-menu':raised,'--dsw-alias-bg-layer-1':sidebar,'--dsw-alias-bg-layer-2':raised,'--dsw-alias-settings-card-fill':raised,'--dsw-alias-settings-card-stroke':border,
       '--dsw-alias-bg-module-platform':raised,'--dsw-alias-interactive-bg-hover':hover,'--dsw-specific-bubble':color(light?84:27)
-    }).map(([key,value])=>`${key}:${value}`).join(';');
+    }).filter(([key])=>!externalBackground||key.startsWith('--codsh-')).map(([key,value])=>`${key}:${value}`).join(';');
   }
   const views=new Map(),key='codsh.background';
   let selected='none',custom='',disposed=false,revision=0;
   let paletteId='none';
+  const modes=[['light','浅色'],['dark','深色'],['system','跟随系统']];
+  let modePopup,modeOwner,popupSequence=0;
+  function closeMode(restoreFocus=false){
+    const trigger=modeOwner?.mode;
+    modePopup?.remove();modePopup=undefined;modeOwner=undefined;
+    trigger?.setAttribute('aria-expanded','false');trigger?.removeAttribute('aria-controls');
+    if(restoreFocus&&trigger?.isConnected)trigger.focus();
+  }
+  function positionMode(){
+    if(!modePopup)return;
+    if(!modeOwner.mode.isConnected){closeMode();return;}
+    const rect=modeOwner.mode.getBoundingClientRect(),viewport=window.visualViewport;
+    const left=viewport?.offsetLeft||0,top=viewport?.offsetTop||0;
+    const width=viewport?.width||window.innerWidth,height=viewport?.height||window.innerHeight;
+    modePopup.style.width=`${Math.min(Math.max(rect.width,144),Math.max(0,width-16))}px`;
+    modePopup.style.maxHeight=`${Math.max(0,height-16)}px`;
+    const popupWidth=modePopup.offsetWidth||parseFloat(modePopup.style.width),popupHeight=modePopup.offsetHeight||Math.min(110,Math.max(0,height-16));
+    modePopup.style.left=`${Math.max(left+8,Math.min(rect.right-popupWidth,left+width-popupWidth-8))}px`;
+    const y=rect.bottom+6+popupHeight>top+height-8?rect.top-popupHeight-6:rect.bottom+6;
+    modePopup.style.top=`${Math.max(top+8,Math.min(y,top+height-popupHeight-8))}px`;
+  }
+  function updateMode(view,value){
+    if(view.mode.value!==value)view.mode.value=value;
+    const label=modes.find(([id])=>id===value)?.[1]||'跟随系统';
+    if(view.modeLabel.textContent!==label)view.modeLabel.textContent=label;
+    view.mode.setAttribute('aria-label',`明暗模式：${label}`);
+    if(modeOwner===view)for(const option of modePopup.children){
+      const checked=String(option.value===value);
+      if(option.getAttribute('aria-checked')!==checked)option.setAttribute('aria-checked',checked);
+    }
+  }
+  function openMode(view,edge){
+    closeMode();modeOwner=view;
+    modePopup=document.createElement('div');modePopup.className='codsh-appearance-menu';
+    modePopup.id=`codsh-appearance-menu-${++popupSequence}`;
+    modePopup.setAttribute('role','menu');modePopup.setAttribute('aria-label','明暗模式');modePopup.dataset.codshSurface='menu';
+    view.mode.setAttribute('aria-controls',modePopup.id);view.mode.setAttribute('aria-expanded','true');
+    for(const [id,label] of modes){
+      const option=document.createElement('button');option.type='button';option.value=id;option.tabIndex=-1;
+      option.setAttribute('role','menuitemradio');option.setAttribute('aria-checked',String(id===view.mode.value));
+      option.innerHTML='<span></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-8"/></svg>';
+      option.firstElementChild.textContent=label;
+      option.onclick=()=>{try{ctx.theme.setTheme(id);updateMode(view,id);view.status.textContent='';closeMode(true);}catch(error){view.status.textContent=error.message;}};
+      modePopup.append(option);
+    }
+    document.body.append(modePopup);positionMode();
+    const options=Array.from(modePopup.children);
+    (edge==='first'?options[0]:edge==='last'?options.at(-1):options.find(option=>option.value===view.mode.value)||options[0]).focus();
+  }
+  const outsideMode=event=>{if(modePopup&&!modePopup.contains(event.target)&&!modeOwner.mode.contains(event.target))closeMode();};
+  const modeKeyboard=event=>{
+    if(!modePopup)return;
+    if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeMode(true);return;}
+    if(event.key==='Tab'){closeMode(true);return;}
+    if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+    event.preventDefault();event.stopPropagation();
+    const options=Array.from(modePopup.children),current=options.indexOf(document.activeElement);
+    const next=event.key==='Home'?0:event.key==='End'?options.length-1:(current+(event.key==='ArrowDown'?1:-1)+options.length)%options.length;
+    options[next].focus();
+  };
+  const modeScroll=event=>{if(modePopup&&!modePopup.contains(event.target))closeMode();};
+  document.addEventListener('pointerdown',outsideMode,true);
+  document.addEventListener('keydown',modeKeyboard,true);
+  document.addEventListener('scroll',modeScroll,true);
+  window.addEventListener('resize',positionMode);
+  window.visualViewport?.addEventListener('resize',positionMode);
+  window.visualViewport?.addEventListener('scroll',positionMode);
+  const wallpaperActive=()=>document.body.hasAttribute('data-we-wallpaper')||document.body.hasAttribute('data-we-glass-page');
+  let externalBackground=wallpaperActive();
   let customUrl='',customUrlSource='';
   function customImageUrl(){
     if(!custom)return '';
@@ -30,6 +99,7 @@ function createBackgrounds(ctx,mark) {
   try{selected=localStorage.getItem(key)||'none';}catch{}
   try{paletteId=localStorage.getItem(key+'.palette')||(selected==='custom'?'none':selected);}catch{}
   const sheet=document.createElement('style');sheet.dataset.codshBackground='';document.head.append(sheet);
+  const layer=document.createElement('div');layer.className='codsh-wallpaper-layer';layer.setAttribute('aria-hidden','true');document.body.append(layer);
   function database(){return new Promise((resolve,reject)=>{
     if(!window.indexedDB){reject(Error('当前环境不支持本机图片存储'));return;}
     const request=indexedDB.open('codsh-backgrounds',1);
@@ -44,32 +114,44 @@ function createBackgrounds(ctx,mark) {
   function paint(){
     if(disposed)return;
     const url=selected==='custom'?customImageUrl():BACKGROUND_PRESETS.find(p=>p.id===selected)?.url;
-    document.documentElement.toggleAttribute('data-codsh-background',!!url);
-    sheet.textContent=url?`html[data-codsh-theme][data-codsh-background]{--codsh-background-image:url(${JSON.stringify(url)})}
-${paletteId==='none'?'':`html[data-codsh-theme][data-codsh-background] body{${palette(paletteId,false)}}
-html[data-codsh-theme][data-codsh-background] body:not([data-ds-dark-theme]){${palette(paletteId,true)}}`}`:'';
-    for(const view of views.values())for(const button of view.grid.querySelectorAll('[data-background]'))button.setAttribute('aria-pressed',String(button.dataset.background===paletteId));
+    document.documentElement.toggleAttribute('data-codsh-background',!externalBackground&&!!url);
+    document.documentElement.toggleAttribute('data-codsh-palette',paletteId!=='none');
+    document.documentElement.setAttribute('data-codsh-background-source',externalBackground?'codsh':'native');
+    sheet.textContent=(url?`html[data-codsh-theme]{--codsh-background-image:url(${JSON.stringify(url)})}`:'')+
+      (paletteId==='none'?'':`html[data-codsh-theme][data-codsh-palette] body{${palette(paletteId,false)}}
+html[data-codsh-theme][data-codsh-palette] body:not([data-ds-dark-theme]){${palette(paletteId,true)}}`);
+    for(const view of views.values()){
+      view.hint.textContent=externalBackground?'背景由此处统一管理，保留壁纸引擎的玻璃效果。':'';
+      for(const button of view.grid.querySelectorAll('[data-background]'))button.setAttribute('aria-pressed',String(button.dataset.background===paletteId));
+    }
   }
   function choose(id){localStorage.setItem(key,id);if(id!=='custom'){localStorage.setItem(key+'.palette',id);paletteId=id;}selected=id;revision++;paint();}
   const initialRevision=revision;
   imageStore().then(value=>{if(disposed||custom)return;custom=typeof value==='string'&&/^data:image\/(png|jpeg|webp|gif);base64,/.test(value)?value:'';if(initialRevision===revision)paint();}).catch(()=>{});
   paint();
   function refresh(){
+    const external=wallpaperActive();
+    if(external!==externalBackground){externalBackground=external;paint();}
     document.querySelectorAll('[data-trajectory-scroll]').forEach(scroll=>mark(scroll.closest(local('root')),'data-codsh-trajectory'));
     document.querySelectorAll(local('page')).forEach(page=>{
       if(page.querySelector(local('pageHeading'))&&page.querySelector(local('filterTab')))mark(page,'data-codsh-automation');
     });
-    for(const [row,view] of views)if(!row.isConnected){view.box.remove();views.delete(row);}
+    for(const [row,view] of views)if(!row.isConnected){if(modeOwner===view)closeMode();view.box.remove();views.delete(row);}
     document.querySelectorAll('[data-shortcut-modal="settings"] [class$="_cubeRow"],[data-shortcut-modal="settings"] [class*="_cubeRow "]').forEach(row=>{
       mark(row,'data-codsh-native-appearance');
       let view=views.get(row);
       if(!view){
         const box=document.createElement('div');box.className='codsh-appearance';
-        const line=document.createElement('label');line.className='codsh-appearance-mode';line.append('明暗模式');
-        const mode=document.createElement('select');mode.setAttribute('aria-label','明暗模式');
-        for(const [id,label] of [['light','浅色'],['dark','深色'],['system','跟随系统']])mode.add(new Option(label,id));
-        mode.onchange=()=>{try{ctx.theme.setTheme(mode.value);}catch(error){status.textContent=error.message;}};line.append(mode);
+        const line=document.createElement('div');line.className='codsh-appearance-mode';line.append('明暗模式');
+        const mode=document.createElement('button');mode.type='button';mode.className='codsh-appearance-trigger';
+        mode.setAttribute('aria-haspopup','menu');mode.setAttribute('aria-expanded','false');
+        mode.innerHTML='<span></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 8 5 5 5-5"/></svg>';
+        const modeLabel=mode.firstElementChild;
+        mode.onclick=()=>modeOwner===view?closeMode(true):openMode(view);
+        mode.onkeydown=event=>{if(['ArrowDown','ArrowUp'].includes(event.key)){event.preventDefault();openMode(view,event.key==='ArrowDown'?'first':'last');}};
+        line.append(mode);
         const title=document.createElement('h3');title.textContent='背景主题';
+        const hint=document.createElement('p');hint.className='codsh-background-hint';
         const grid=document.createElement('div');grid.className='codsh-background-grid';
         for(const preset of [{id:'none'},...BACKGROUND_PRESETS]){
           const button=document.createElement('button');button.type='button';button.dataset.background=preset.id;
@@ -95,13 +177,13 @@ html[data-codsh-theme][data-codsh-background] body:not([data-ds-dark-theme]){${p
             await imageStore(data);if(disposed)return;custom=data;choose('custom');status.textContent='已保存到本机';
           }catch(error){if(!disposed)status.textContent=error.message;}finally{change.disabled=false;upload.value='';}
         };
-        box.append(line,title,grid,change,upload,status);row.after(box);view={box,mode,grid};views.set(row,view);
+        box.append(line,title,hint,grid,change,upload,status);row.after(box);view={box,mode,modeLabel,grid,hint,status};views.set(row,view);paint();
       }
       if(view.box.previousElementSibling!==row)row.after(view.box);
       const preference=ctx.theme.getTheme?.().preference;
       const buttons=Array.from(row.querySelectorAll('button'));
-      view.mode.value=preference||['light','dark','system'][buttons.findIndex(button=>button.getAttribute('aria-pressed')==='true')]||'system';
+      updateMode(view,preference||['light','dark','system'][buttons.findIndex(button=>button.getAttribute('aria-pressed')==='true')]||'system');
     });
   }
-  return {refresh,dispose(){disposed=true;if(customUrl.startsWith('blob:'))URL.revokeObjectURL(customUrl);for(const view of views.values())view.box.remove();views.clear();sheet.remove();document.documentElement.removeAttribute('data-codsh-background');}};
+  return {refresh,dispose(){disposed=true;closeMode();document.removeEventListener('pointerdown',outsideMode,true);document.removeEventListener('keydown',modeKeyboard,true);document.removeEventListener('scroll',modeScroll,true);window.removeEventListener('resize',positionMode);window.visualViewport?.removeEventListener('resize',positionMode);window.visualViewport?.removeEventListener('scroll',positionMode);if(customUrl.startsWith('blob:'))URL.revokeObjectURL(customUrl);for(const view of views.values())view.box.remove();views.clear();sheet.remove();layer.remove();document.documentElement.removeAttribute('data-codsh-background');document.documentElement.removeAttribute('data-codsh-palette');document.documentElement.removeAttribute('data-codsh-background-source');}};
 }
